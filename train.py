@@ -70,6 +70,8 @@ def train(args):
     visual_learner.to(device)
     pq_learner.to(device)
 
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
     model.eval()
     textual_learner.train()
     visual_learner.train()
@@ -124,7 +126,7 @@ def train(args):
             image = items['img'].to(device)
             label =  items['anomaly']
 
-            gt = items['img_mask'].squeeze().to(device)
+            gt = items['img_mask'][:, 0].to(device)
             gt[gt > 0.5] = 1
             gt[gt <= 0.5] = 0
 
@@ -152,7 +154,7 @@ def train(args):
             # ====================== textual_adapter ======================
             if args.textual_learner:
                 learned_prompts, tokenized_prompts = textual_learner()
-                learned_text_features = model.encode_text(learned_prompts, tokenized_prompts).float()  # [2, 768]
+                learned_text_features = model.encode_text_learn(learned_prompts, tokenized_prompts).float()  # [2, 768]
                 global_logit, local_score = textual_learner.compute_global_local_score(query_feats, query_patch_feats, learned_text_features)
 
                 global_loss += F.cross_entropy(global_logit, label.long().cuda())

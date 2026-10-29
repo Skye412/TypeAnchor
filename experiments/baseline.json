@@ -1,0 +1,32 @@
+{
+  "version": "baseline-v1",
+  "source_revision": "354d9e3332ec5348b3d8e4439111d34f8e94c0a9",
+  "dataset": "Bridge512_balance_CODEBRIM",
+  "train_images": 2861,
+  "val_images": 400,
+  "backbone": "ViT-L/14@336px",
+  "input_size": 518,
+  "features": [
+    6,
+    12,
+    18,
+    24
+  ],
+  "epochs": 15,
+  "batch_size": 8,
+  "seed": 10,
+  "learning_rate": 0.001,
+  "optimizer": "Adam",
+  "betas": [
+    0.5,
+    0.999
+  ],
+  "adapters": [
+    "visual",
+    "textual",
+    "prompt-query"
+  ],
+  "training_reference_count": 1,
+  "test_policy": "withheld during development",
+  "status": "prepared; awaiting remote repository destination before training"
+}
