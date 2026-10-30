@@ -240,7 +240,7 @@ class PromptDataset(data.Dataset):
                     data_tmp = meta_train_info[cls_name]
                     #data_tmp = [item for item in data_tmp if item['anomaly'] == 1] # 排除OK
                     torch.manual_seed(seed)
-                    indices = torch.randint(0, len(data_tmp), (self.k_shots,))
+                    indices = torch.randperm(len(data_tmp))[:self.k_shots]
                     self.prompt_data_all.extend([data_tmp[i] for i in indices])
 
                     for i in range(len(indices)):
