@@ -188,7 +188,13 @@ def cmd_export(a):
         s = load_map(a.maps, r["image"])
         x0, y0, x1, y1 = (int(r[k]) for k in ("x0", "y0", "x1", "y1"))
         # 轮廓叠加
-        b = (s >= thr).astype(np.uint8)
+        b = (s >= thr)
+        labels, _ = ndimage.label(b, structure=np.ones((3, 3), dtype=bool))
+        component_id = int(r["blob_id"].rsplit("__", 1)[-1])
+        component = labels == component_id
+        if int(component.sum()) != int(r["area"]):
+            raise ValueError(f"Component identity mismatch: {r['blob_id']}")
+        b = component.astype(np.uint8)
         if ndimage is not None:
             edge = b - ndimage.binary_erosion(b).astype(np.uint8)
         else:
@@ -203,7 +209,7 @@ def cmd_export(a):
         pad = a.pad
         cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
         cx1, cy1 = min(img.width, x1 + pad), min(img.height, y1 + pad)
-        crop = img.crop((cx0, cy0, cx1, cy1))
+        crop = ov.crop((cx0, cy0, cx1, cy1))
         side = max(crop.width, crop.height)
         scale = max(1, 256 // max(1, side))
         crop = crop.resize((crop.width * scale, crop.height * scale), Image.NEAREST)
