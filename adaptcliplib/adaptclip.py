@@ -431,7 +431,9 @@ class VisionTransformer(nn.Module):
         if True:
             patch_token_list = []
             for patch_token in patch_tokens:
-                patch_token = self.ln_post(patch_token.permute(1, 0, 2)) @ self.proj  # LND -> NLD
+                patch_token = self.ln_post(patch_token.permute(1, 0, 2))  # LND -> NLD
+                if proj_use:
+                    patch_token = patch_token @ self.proj
                 patch_token_list.append(patch_token)
             patch_tokens = patch_token_list
 

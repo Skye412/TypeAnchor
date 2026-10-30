@@ -9,7 +9,7 @@ class NuisanceHead(nn.Module):
     Inputs are patch tokens without CLS: query list [B,N,D], refs list
     [B,K,N,D], and text embeddings [13,E]. Matching uses Euclidean distance.
     """
-    def __init__(self, token_dim=768, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5):
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5):
         super().__init__()
         self.grid=grid; self.temperature=temperature
         self.visual=nn.ModuleList([nn.Sequential(nn.Linear(token_dim,token_dim//4),nn.GELU(),nn.Linear(token_dim//4,token_dim)) for _ in range(4)])
