@@ -185,7 +185,7 @@ def test(args):
 
 
     # ====================== Initialize Evaluation Metrics ======================
-    cpu_eva = False
+    cpu_eva = True
     if cpu_eva:
         evaluator = Evaluator('cpu', metrics=eval_metrics, sample_level=sample_level)
     else:
