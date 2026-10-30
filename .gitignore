@@ -20,3 +20,5 @@ data_views/
 *.npy
 docs/adaptclip-paper.pdf
 docs/adaptclip-paper.txt
+
+third_party/
