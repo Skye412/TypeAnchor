@@ -8,7 +8,7 @@ p.add_argument('--source',required=True)
 p.add_argument('--output',default='data_views')
 a=p.parse_args(); source=Path(a.source); out=Path(a.output)
 records={}; counts={}
-for split in ['train','val']:
+for split in ['train','val','test']:
     meta=json.loads((source/split/'meta.json').read_text(encoding='utf-8-sig'))
     populated=[v for v in meta.values() if isinstance(v,dict) and any(v.values())]
     rows=next(iter(populated[0].values()))
