@@ -14,13 +14,15 @@ from tools import get_transform,setup_seed
 from tqdm import tqdm
 
 NAMES=['intact concrete surface','crack on concrete','rust stain on concrete','spalling on concrete','efflorescence on concrete','damaged concrete surface','water stain on concrete','shadow on concrete','moss on concrete','patch repair on concrete','graffiti on concrete','formwork texture on concrete','dirt on concrete']
+# Anchor sets: 'full' = 13 anchors; 'no-nuisance' drops the seven nuisance anchors (aggregate form of prediction P2).
+ANCHOR_SETS={'full':NAMES,'no-nuisance':NAMES[:6]}
 TEMPLATES=['a photo of {}','a close-up photo of {} on a bridge','{} on a concrete wall','an inspection image showing {}']
 CLASSES=['Crack','Corrosion','Spalling','Efflorescence']
 class Anchors(nn.Module):
- def __init__(self,clip):
-  super().__init__(); self.ctx=nn.Parameter(torch.randn(13,12,768)*.02)
+ def __init__(self,clip,names=NAMES):
+  super().__init__(); self.names=list(names); n=len(self.names); self.ctx=nn.Parameter(torch.randn(n,12,768)*.02)
   texts=[]; groups=[]
-  for i,name in enumerate(NAMES):
+  for i,name in enumerate(self.names):
    for alternative in ([name,'exposed corroded rebar'] if i==2 else [name]):
     for template in TEMPLATES: texts.append(' '.join(['X']*12)+' '+template.format(alternative)+'.'); groups.append(i)
   ids=tokenize(texts); emb=clip.token_embedding(ids.to(next(clip.parameters()).device)).detach()
@@ -28,7 +30,7 @@ class Anchors(nn.Module):
  def forward(self,clip):
   context=self.ctx[self.groups]; inp=torch.cat([self.prefix,context.to(self.prefix.dtype),self.suffix],1)
   f=clip.encode_text_learn(inp,self.ids).float(); f=F.normalize(f,dim=-1)
-  return F.normalize(torch.stack([f[self.groups==i].mean(0) for i in range(13)]),dim=-1)
+  return F.normalize(torch.stack([f[self.groups==i].mean(0) for i in range(len(self.names))]),dim=-1)
 class Bridge(Dataset):
  def __init__(self,root,split,transform):
   self.root=Path(root)/split; self.transform=transform
@@ -45,13 +47,16 @@ def binary_loss(p,y):
  p=p.clamp(1e-6,1-1e-6); focal=-(y*(1-p)**2*p.log()+(1-y)*p**2*(1-p).log()).mean(); dice=1-(2*(p*y).sum()+1)/(p.sum()+y.sum()+1); return focal+dice
 
 def main():
- ap=argparse.ArgumentParser(); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--out',default='runs/nuisance-v0'); ap.add_argument('--epochs',type=int,default=20); ap.add_argument('--seed',type=int,default=10); args=ap.parse_args()
- setup_seed(args.seed); out=Path(args.out); out.mkdir(parents=True,exist_ok=True); (out/'config.json').write_text(json.dumps(vars(args),indent=2))
+ ap=argparse.ArgumentParser(); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--out',default='runs/nuisance-v0'); ap.add_argument('--epochs',type=int,default=20); ap.add_argument('--seed',type=int,default=10)
+ ap.add_argument('--anchor-set',choices=sorted(ANCHOR_SETS),default='full'); ap.add_argument('--bank',default=None,help='cached normal global vectors; default <out>/normal_globals.pt')
+ args=ap.parse_args()
+ names=ANCHOR_SETS[args.anchor_set]; config=dict(vars(args),anchors=names)
+ setup_seed(args.seed); out=Path(args.out); out.mkdir(parents=True,exist_ok=True); (out/'config.json').write_text(json.dumps(config,indent=2))
  device='cuda'; clip,_=adaptcliplib.load('ViT-L/14@336px',device=device); clip.visual.DAPM_replace(DPAM_layer=20); clip.eval()
  for p in clip.parameters():p.requires_grad_(False)
  transform,_=get_transform(518); train=Bridge(args.data,'train',transform); normal=[r for r in train.rows if r['category']=='normal']
  # Cached global vectors for retrieval; only selected training normals enter the bank.
- cache=out/'normal_globals.pt'
+ cache=Path(args.bank) if args.bank else out/'normal_globals.pt'
  if cache.exists(): bank=torch.load(cache,map_location=device,weights_only=True)
  else:
   bank=[]
@@ -60,7 +65,7 @@ def main():
    with torch.no_grad(): g,_=clip.encode_image(x,[6,12,18,24],proj_use=False,DPAM_layer=20)
    bank.append(F.normalize(g.float(),dim=-1).cpu())
   bank=torch.cat(bank); torch.save(bank,cache); bank=bank.to(device)
- head=NuisanceHead().to(device); anchors=Anchors(clip).to(device)
+ head=NuisanceHead(n_anchors=len(names)).to(device); anchors=Anchors(clip,names).to(device)
  with torch.no_grad(): prior=anchors(clip).detach()
  visual_opt=torch.optim.AdamW(head.parameters(),lr=.001); text_opt=torch.optim.AdamW(anchors.parameters(),lr=.001)
  weights=torch.tensor([1/(sum(r['category']==c for r in train.rows)) for c in ('normal','annotated')]); sampleweights=torch.tensor([weights[int(r['category']=='annotated')] for r in train.rows]); sampler=WeightedRandomSampler(sampleweights,len(train),replacement=True,generator=torch.Generator().manual_seed(args.seed))
@@ -72,7 +77,6 @@ def main():
    with torch.no_grad():
     global_feat,q=clip.encode_image(img,[6,12,18,24],proj_use=False,DPAM_layer=20); q=[x[:,1:].float() for x in q]; sim=F.normalize(global_feat.float(),dim=-1)@bank.T
     excluded=torch.tensor([r['parent_id']==parent[0] for r in normal],device=device); sim[:,excluded]=-float('inf')
-    inds=(torch.randperm(len(normal),device=device)[~excluded[torch.randperm(len(normal),device=device)]] if False else None)
     if random.random()<.05: inds=torch.nonzero(~excluded).flatten()[torch.randperm(int((~excluded).sum()),device=device)[:4]]
     else: inds=sim[0].topk(4).indices
     refs=[]
@@ -84,6 +88,6 @@ def main():
    loss=binary_loss(output['residual'],union)+F.cross_entropy(output['image_logits'],label)+explanation_loss(output['pi'],masks)+.5*binary_loss(output['generic'],union)+(1-F.cosine_similarity(text,prior,dim=-1)).sum()
    (loss/8).backward(); losses.append(loss.item())
    if (step+1)%8==0 or step+1==len(loader): opt.step(); opt.zero_grad(set_to_none=True)
-  torch.save({'epoch':epoch,'head':head.state_dict(),'anchors':anchors.state_dict(),'config':vars(args),'loss':sum(losses)/len(losses)},out/f'epoch_{epoch}.pth')
+  torch.save({'epoch':epoch,'head':head.state_dict(),'anchors':anchors.state_dict(),'config':config,'loss':sum(losses)/len(losses)},out/f'epoch_{epoch}.pth')
   print(f'epoch {epoch}/{args.epochs} loss={sum(losses)/len(losses):.6f}',flush=True)
 if __name__=='__main__': main()

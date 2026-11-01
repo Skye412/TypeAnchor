@@ -4,14 +4,16 @@ from torch import nn
 from torch.nn import functional as F
 
 class NuisanceHead(nn.Module):
-    """Four-level query/reference residual head and thirteen-way semantic competition.
+    """Four-level query/reference residual head and n-way semantic competition.
 
     Inputs are patch tokens without CLS: query list [B,N,D], refs list
-    [B,K,N,D], and text embeddings [13,E]. Matching uses Euclidean distance.
+    [B,K,N,D], and text embeddings [n_anchors,E]. Matching uses Euclidean distance.
+    Anchor layout: 0 normal, 1-4 defect types, 5 generic defect, 6.. nuisances
+    (n_anchors=13 full set, 6 = no-nuisance-anchor ablation).
     """
-    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5):
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=13):
         super().__init__()
-        self.grid=grid; self.temperature=temperature
+        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors
         self.visual=nn.ModuleList([nn.Sequential(nn.Linear(token_dim,token_dim//4),nn.GELU(),nn.Linear(token_dim//4,token_dim)) for _ in range(4)])
         self.projections=nn.ModuleList([nn.Linear(token_dim,text_dim) for _ in range(4)])
         self.res_heads=nn.ModuleList([nn.Conv2d(2*token_dim,hidden,1) for _ in range(4)])
@@ -22,6 +24,8 @@ class NuisanceHead(nn.Module):
         self.register_buffer('kernel',kernel)
 
     def forward(self,queries,references,text,output_size=518):
+        if text.shape[0]!=self.n_anchors: raise ValueError('Unexpected anchor count')
+        n_a=self.n_anchors
         z=[]; semantic=[]
         for i,(q,ref) in enumerate(zip(queries,references)):
             b,n,d=q.shape
@@ -39,10 +43,10 @@ class NuisanceHead(nn.Module):
         res_logits=self.seg(combined)
         pooled=torch.cat([torch.cat([a.mean((2,3)),a.amax((2,3))],1) for a in z],1)
         image_logits=self.image(pooled)
-        scores=torch.stack(semantic).mean(0).transpose(1,2).reshape(-1,13,self.grid,self.grid)
+        scores=torch.stack(semantic).mean(0).transpose(1,2).reshape(-1,n_a,self.grid,self.grid)
         weights=res_logits.sigmoid()
         denominator=F.conv2d(weights,self.kernel,padding=2).clamp_min(1e-8)
-        smooth=F.conv2d(scores*weights,self.kernel.expand(13,1,-1,-1),padding=2,groups=13)/denominator
+        smooth=F.conv2d(scores*weights,self.kernel.expand(n_a,1,-1,-1),padding=2,groups=n_a)/denominator
         pi=smooth.softmax(1)
         residual=F.interpolate(res_logits,size=(output_size,output_size),mode='bilinear',align_corners=False).sigmoid()
         pi_up=F.interpolate(pi,size=(output_size,output_size),mode='bilinear',align_corners=False)
@@ -59,5 +63,6 @@ def explanation_loss(pi, masks, dropout_probability=.25):
     loss=-(labels*pi[:,1:5].clamp_min(1e-8).log()).sum(1)/norm
     loss-=dropped*pi[:,5].clamp_min(1e-8).log()/norm
     background=(defect+dropped)==0
+    # Without nuisance anchors (n_anchors=6) the background target reduces to the normal anchor alone.
     loss[background]=-(pi[:,0]+pi[:,6:].sum(1))[background].clamp_min(1e-8).log()
     return loss.mean()
