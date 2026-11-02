@@ -53,7 +53,14 @@ class NuisanceHead(nn.Module):
         typed=pi_up[:,1:5]; generic=residual*pi_up[:,1:6].sum(1,keepdim=True)
         return {'residual':residual,'image_logits':image_logits,'pi':pi,'typed':typed,'generic':generic,'binary':torch.maximum(generic,typed.amax(1,keepdim=True)),'nuisance':pi_up[:,6:].sum(1,keepdim=True)}
 
-def explanation_loss(pi, masks, dropout_probability=.25):
+def explanation_loss(pi, masks, dropout_probability=.25, bg_target=None):
+    """Grouped cross-entropy on pi [B,n,h,w].
+
+    bg_target=None  : loose background target -log(pi_normal + sum pi_nuisance)  (v0 behaviour; collapsed in practice,
+                      see docs/results.md §2b.4).
+    bg_target [B,h,w] long : per-cell anchor index for background cells (0 = normal, 6.. = a pseudo-labelled nuisance);
+                      loss is the plain -log pi[bg_target].
+    """
     target=F.adaptive_avg_pool2d(masks.float(),pi.shape[-2:])>=.25
     labels=target.float()
     if torch.rand((),device=pi.device)<dropout_probability:
@@ -63,6 +70,10 @@ def explanation_loss(pi, masks, dropout_probability=.25):
     loss=-(labels*pi[:,1:5].clamp_min(1e-8).log()).sum(1)/norm
     loss-=dropped*pi[:,5].clamp_min(1e-8).log()/norm
     background=(defect+dropped)==0
-    # Without nuisance anchors (n_anchors=6) the background target reduces to the normal anchor alone.
-    loss[background]=-(pi[:,0]+pi[:,6:].sum(1))[background].clamp_min(1e-8).log()
+    if bg_target is None:
+        # Without nuisance anchors (n_anchors=6) the loose target reduces to the normal anchor alone.
+        loss[background]=-(pi[:,0]+pi[:,6:].sum(1))[background].clamp_min(1e-8).log()
+    else:
+        picked=pi.gather(1,bg_target.unsqueeze(1)).squeeze(1)
+        loss[background]=-picked[background].clamp_min(1e-8).log()
     return loss.mean()

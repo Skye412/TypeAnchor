@@ -31,7 +31,7 @@ def main():
  trans,_=get_transform(518); train=Bridge(a.data,'train',trans); val=Bridge(a.data,'val',trans); normals=[r for r in train.rows if r['category']=='normal']; valrows={r['sample']:r for r in val.rows}
  bank=torch.load('runs/nuisance-v0/normal_globals.pt',map_location=device,weights_only=True)
  ck=torch.load(a.checkpoint,map_location='cpu',weights_only=True); names=ck['config'].get('anchors',NAMES)
- head=NuisanceHead(n_anchors=len(names)).to(device).eval(); head.load_state_dict(ck['head']); anchors=Anchors(clip,names).to(device).eval(); anchors.load_state_dict(ck['anchors'])
+ head=NuisanceHead(n_anchors=len(names)).to(device).eval(); head.load_state_dict(ck['head']); anchors=Anchors(clip,names,freeze_nuisance=ck['config'].get('freeze_nuisance',False)).to(device).eval(); anchors.load_state_dict(ck['anchors'])
  hist=np.zeros(13); hist_all=np.zeros(13); per=[]; cache={}
  with torch.inference_mode():
   text=anchors(clip)

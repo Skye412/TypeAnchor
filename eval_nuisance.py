@@ -25,8 +25,8 @@ def main():
  clip,_=adaptcliplib.load('ViT-L/14@336px',device=device);clip.visual.DAPM_replace(DPAM_layer=20);clip.eval()
  trans,_=get_transform(518); train=Bridge(a.data,'train',trans); data=Bridge(a.data,a.split,trans); normals=[r for r in train.rows if r['category']=='normal']
  bank=torch.load(a.bank,map_location=device,weights_only=True)
- ckpt=torch.load(a.checkpoint,map_location='cpu',weights_only=True); names=ckpt.get('config',{}).get('anchors',NAMES)
- head=NuisanceHead(n_anchors=len(names)).to(device).eval();head.load_state_dict(ckpt['head']);anchors=Anchors(clip,names).to(device).eval();anchors.load_state_dict(ckpt['anchors'])
+ ckpt=torch.load(a.checkpoint,map_location='cpu',weights_only=True); cfg=ckpt.get('config',{}); names=cfg.get('anchors',NAMES)
+ head=NuisanceHead(n_anchors=len(names)).to(device).eval();head.load_state_dict(ckpt['head']);anchors=Anchors(clip,names,freeze_nuisance=cfg.get('freeze_nuisance',False)).to(device).eval();anchors.load_state_dict(ckpt['anchors'])
  cache={}; records=[]
  with torch.inference_mode():
   text=anchors(clip)
