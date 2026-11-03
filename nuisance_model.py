@@ -169,7 +169,10 @@ def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.
         bgvals=r[~defect]; cap=torch.quantile(bgvals,1-res_cap) if bgvals.numel() else r.new_tensor(float('inf'))
         high=(r>tau_res)&(r>=cap)
     else: high=torch.zeros_like(defect)
-    if zs_prob is not None:
+    if n_nuis==0:
+        # no nuisance anchors (6-anchor ablation of v2): every background cell targets the normal anchor
+        suspicious=torch.zeros_like(defect); zs_prob=None
+    elif zs_prob is not None:
         q_nuis=zs_prob[:,1:]; conf=(q_nuis.max(1).values>=tau_conf)&(q_nuis.argmax(1)>=0)
         suspicious=(high|conf)&~defect
     else: suspicious=high&~defect
