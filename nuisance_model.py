@@ -133,8 +133,9 @@ class NuisanceHeadV2(nn.Module):
         mixed=gamma*local+(1-gamma)*region
         pi=mixed.softmax(1)                                                          # n-way, read as 3 groups
         nu=pi[:,1:1+N_DEFECT_GROUP].sum(1,keepdim=True); mu=pi[:,1+N_DEFECT_GROUP:].sum(1,keepdim=True)
-        # multi-label type heads on local similarity relative to the normal anchor
-        margin=(local[:,1:5]-local[:,:1])*self.temperature                           # back to cosine units
+        # multi-label type heads on the gamma-mixed similarity relative to the normal anchor (gamma learns per anchor
+        # how much regional context each type wants; cracks can stay local, blobs can go regional)
+        margin=(mixed[:,1:5]-mixed[:,:1])*self.temperature                           # back to cosine units
         p_type=(margin*self.type_scale.view(1,4,1,1)*(1/self.temperature)+self.type_bias.view(1,4,1,1)).sigmoid()
         # image head on nu-gated residual features
         gate=.5+.5*nu
@@ -142,13 +143,17 @@ class NuisanceHeadV2(nn.Module):
         image_logits=self.image(pooled)
         up=lambda t:F.interpolate(t,size=(output_size,output_size),mode='bilinear',align_corners=False)
         residual=up(res_logits).sigmoid(); nu_up=up(nu); mu_up=up(mu)
-        typed=up(p_type)*nu_up; generic=residual*nu_up
+        typed=up(p_type); typed_gated=typed*nu_up; generic=residual*nu_up
+        # 'typed' is the ungated multi-label probability (same meaning as v0's typed = pi_c); 'typed_gated' = typed * nu is the
+        # model's own output and feeds the binary map. Evaluation reports typed, typed*residual and typed*nu separately.
         return {'residual':residual,'image_logits':image_logits,'pi':pi,'nu':nu,'mu':mu,'p_type':p_type,'res_weights':weights,
-                'typed':typed,'generic':generic,'binary':torch.maximum(generic,typed.amax(1,keepdim=True)),'nuisance':mu_up}
+                'typed':typed,'typed_gated':typed_gated,'nu_up':nu_up,'generic':generic,'binary':torch.maximum(generic,typed_gated.amax(1,keepdim=True)),'nuisance':mu_up}
 
-def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.5,beta=.5,use_res=True,res_cap=.3):
+def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.5,beta=.5,use_res=True,res_cap=.3,dropout_probability=.25):
     """Residual-conditioned stratified supervision on the n-way pi [B,n,g,g].
-    defect cells (any class mask >= .25 of the cell): -log nu
+    defect cells (any class mask >= .25 of the cell): -log nu  +  within-group CE on pi[1..5]/nu with soft class targets
+        (overlap shares mass; with prob dropout_probability one class is re-targeted to the generic anchor, as in v0), so the
+        defect group cannot collapse onto one anchor and the generic anchor keeps its 'type-unknown defect' meaning
     background cells, low residual and no confident zero-shot nuisance: -log pi_normal
     background cells, high residual (sigmoid res > tau_res, detached) or confident zero-shot nuisance:
         beta * (-log mu) + (1-beta) * KL(q_zs || pi_nuis / mu)   where q_zs is the centered zero-shot distribution over nuisances.
@@ -170,7 +175,14 @@ def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.
     else: suspicious=high&~defect
     clean=~defect&~suspicious
     loss=torch.zeros_like(p0)
-    loss[defect]=-nu[defect].clamp_min(1e-8).log()
+    labels=target.float()                                                            # [B,4,g,g]
+    if torch.rand((),device=pi.device)<dropout_probability:
+        c=torch.randint(4,(),device=pi.device); dropped=labels[:,c].clone(); labels[:,c]=0
+    else: dropped=torch.zeros_like(labels[:,0])
+    pi_in=pi[:,1:1+N_DEFECT_GROUP]/nu.unsqueeze(1).clamp_min(1e-8)                    # within-defect-group distribution
+    norm=(labels.sum(1)+dropped).clamp_min(1)
+    ce_in=-(labels*pi_in[:,:4].clamp_min(1e-8).log()).sum(1)/norm-dropped*pi_in[:,4].clamp_min(1e-8).log()/norm
+    loss[defect]=(-nu.clamp_min(1e-8).log()+ce_in)[defect]
     loss[clean]=-p0[clean].clamp_min(1e-8).log()
     if suspicious.any():
         l=-beta*mu.clamp_min(1e-8).log()

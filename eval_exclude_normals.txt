@@ -1,0 +1,22 @@
+# Cleaned-Val exclusion list: validation images filed as "normal" that visibly contain defects
+# (reviewed on runs/normal_review/top30_normal_by_v1fix_score.png, 2026-11-03). Edit freely; one sample per line.
+# Nuisance-only images (formwork joint 01162, soil/debris 00033 x0000_y0000, peeling paint 01219, scribble 00804) are kept.
+normal_01145__tile_x0512_y0000   # wide crack
+normal_01145__tile_x0512_y0512   # wide crack
+normal_00116__tile_x0512_y0000   # exposed corroded rebar + gravel
+normal_00116__tile_x0000_y0512   # exposed corroded rebar + gravel
+normal_00033__tile_x0512_y0512   # rust stains
+normal_01130__tile_x0512_y0000   # hairline crack network
+normal_00180__tile_x0512_y0512   # exposed corroded rebar
+normal_00180__tile_x0000_y0512   # exposed corroded rebar
+normal_00297__tile_x0512_y0512   # rust
+normal_00297__tile_x0000_y0000   # rust
+normal_00181__tile_x0000_y0000   # exposed rebar
+normal_00181__tile_x0000_y0512   # cavity with rebar
+normal_00230__tile_x0000_y0512   # hairline crack
+normal_00055__tile_x0512_y0000   # crack
+normal_00271__tile_x0000_y0512   # rust stains
+normal_00271__tile_x0000_y0000   # rust stains
+normal_00953__tile_x0000_y0000   # corroded rebar
+normal_00277__tile_x0512_y0512   # crack with efflorescence
+normal_00778__tile_x0000_y0512   # rust

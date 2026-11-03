@@ -26,9 +26,10 @@ def rank_metrics(y,s):
  return float(np.trapz(np.r_[0,rec],np.r_[0,fpr])),float(np.sum(np.diff(np.r_[0,rec])*prec))
 
 def main():
- ap=argparse.ArgumentParser(); ap.add_argument('--run',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--split',default='val'); ap.add_argument('--skip-aupro',action='store_true'); ap.add_argument('--aupro-device',default='cpu'); a=ap.parse_args()
- r=Path(a.run); data=Path(a.data)/a.split; rows=list(csv.DictReader((r/'predictions.csv').open()))
- out={'images':len(rows),'split':a.split}
+ ap=argparse.ArgumentParser(); ap.add_argument('--run',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--split',default='val'); ap.add_argument('--skip-aupro',action='store_true'); ap.add_argument('--aupro-device',default='cpu'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); a=ap.parse_args()
+ from eval_filter import load_exclude,filter_rows
+ r=Path(a.run); data=Path(a.data)/a.split; rows=filter_rows(list(csv.DictReader((r/'predictions.csv').open())),load_exclude(a.exclude))
+ out={'images':len(rows),'split':a.split,'exclude':a.exclude}
  # ---- P-AUPRO on binary maps (same evaluator and resolution as baseline-v1) ----
  if not a.skip_aupro:
   gts=[]; prs=[]
@@ -42,17 +43,23 @@ def main():
   del gts,prs; torch.cuda.empty_cache(); print('P-AUPRO',out['P-AUPRO'],flush=True)
  # ---- per-class multi-label metrics on typed maps ----
  if not (r/'typed').exists():
-  out['per_class']='typed maps not saved'; (r/'metrics_multiclass.json').write_text(json.dumps(out,indent=2)); print(json.dumps(out,indent=2)); return
- per={}
+  out['per_class']='typed maps not saved'; (r/('metrics_multiclass'+a.suffix+'.json')).write_text(json.dumps(out,indent=2)); print(json.dumps(out,indent=2)); return
+ per={}; has_nu=(r/'nu').exists(); variants=['typed','gated']+(['nugated'] if has_nu else [])
  for ci,c in enumerate(CLASSES):
-  ys=[]; typed=[]; gated=[]; nm_t=[]; nm_g=[]
+  ys=[]; preds={v:[] for v in variants}; nms={v:[] for v in variants}
   for row in rows:
    t=np.load(r/'typed'/(row['sample']+'.npy'))[ci].astype(np.float32); res=np.load(r/'residual'/(row['sample']+'.npy')).astype(np.float32)
+   cur={'typed':t,'gated':t*res}
+   if has_nu: cur['nugated']=t*np.load(r/'nu'/(row['sample']+'.npy')).astype(np.float32)
    if row['label']=='1': g=np.asarray(Image.open(data/'multiclass_annotations'/'masks'/(row['sample']+'__'+c+'.png')).convert('L').resize((518,518),Image.Resampling.NEAREST))>0
-   else: g=np.zeros((518,518),bool); nm_t.append(t.ravel()); nm_g.append((t*res).ravel())
-   ys.append(g.ravel()); typed.append(t.ravel()); gated.append((t*res).ravel())
+   else:
+    g=np.zeros((518,518),bool)
+    for v in variants: nms[v].append(cur[v].ravel())
+   ys.append(g.ravel())
+   for v in variants: preds[v].append(cur[v].ravel())
   y=np.concatenate(ys); per[c]={'gt_pixels':int(y.sum())}
-  for name,pred,nm in (('typed',typed,nm_t),('gated',gated,nm_g)):
+  for name in variants:
+   pred=preds[name]; nm=nms[name]
    s=np.concatenate(pred); auroc,apv=rank_metrics(y,s)
    ious=[]
    for th in THRS:
@@ -60,16 +67,16 @@ def main():
    ious=np.array(ious); best=int(ious.argmax()); nmc=np.concatenate(nm)
    per[c][name]={'P-AUROC':auroc,'P-AP':apv,'IoU@0.3':float(ious[np.isclose(THRS,.3)][0]),'IoU_best':float(ious[best]),'thr_best':float(THRS[best]),'normal_flagged_area@0.3':float((nmc>=.3).mean())}
   print(c,json.dumps(per[c]),flush=True)
- out['per_class']=per
- for name in ('typed','gated'):
+ out['per_class']=per; out['variants']=variants
+ for name in variants:
   out['mIoU@0.3_'+name]=float(np.mean([per[c][name]['IoU@0.3'] for c in CLASSES])); out['mIoU_best_'+name]=float(np.mean([per[c][name]['IoU_best'] for c in CLASSES])); out['mAP_'+name]=float(np.mean([per[c][name]['P-AP'] for c in CLASSES]))
- out['per_class_note']='GT from multiclass_annotations (overlap allowed, nearest 518); IoU_best is selected on this split and is optimistic'
- (r/'metrics_multiclass.json').write_text(json.dumps(out,indent=2),encoding='utf-8')
+ out['per_class_note']='GT from multiclass_annotations (overlap allowed, nearest 518); IoU_best is selected on this split and is optimistic. typed = raw type probability (v0: pi_c; v2: sigmoid head), gated = typed*residual, nugated = typed*nu (v2 only, the model output)'
+ (r/('metrics_multiclass'+a.suffix+'.json')).write_text(json.dumps(out,indent=2),encoding='utf-8')
  lines=['## '+str(r)+' per-class ('+a.split+', '+str(len(rows))+' images)','','| class | GT px | variant | P-AUROC | P-AP | IoU@0.3 | IoU_best (thr) | normal flagged@0.3 |','|---|---|---|---|---|---|---|---|']
  for c in CLASSES:
-  for name in ('typed','gated'):
+  for name in variants:
    m=per[c][name]; lines.append('| %s | %d | %s | %.3f | %.3f | %.3f | %.3f (%.2f) | %.3f |'%(c,per[c]['gt_pixels'],name,m['P-AUROC'],m['P-AP'],m['IoU@0.3'],m['IoU_best'],m['thr_best'],m['normal_flagged_area@0.3']))
- lines+=['','mIoU@0.3 typed %.3f / gated %.3f; mIoU_best typed %.3f / gated %.3f; mAP typed %.3f / gated %.3f'%(out['mIoU@0.3_typed'],out['mIoU@0.3_gated'],out['mIoU_best_typed'],out['mIoU_best_gated'],out['mAP_typed'],out['mAP_gated'])]
+ lines+=['','; '.join('%s: mIoU@0.3 %.3f, mIoU_best %.3f, mAP %.3f'%(v,out['mIoU@0.3_'+v],out['mIoU_best_'+v],out['mAP_'+v]) for v in variants)]
  if 'P-AUPRO' in out: lines.append('P-AUPRO (binary map) %.4f'%out['P-AUPRO'])
- (r/'metrics_multiclass.md').write_text('\n'.join(lines)+'\n',encoding='utf-8'); print('\n'.join(lines),flush=True)
+ (r/('metrics_multiclass'+a.suffix+'.md')).write_text('\n'.join(lines)+'\n',encoding='utf-8'); print('\n'.join(lines),flush=True)
 if __name__=='__main__': main()

@@ -69,16 +69,26 @@ class AnchorsV2(nn.Module):
   return F.normalize(self.hand+self.eps*d,dim=-1)
 
 class Bridge(Dataset):
- def __init__(self,root,split,transform):
-  self.root=Path(root)/split; self.transform=transform
+ def __init__(self,root,split,transform,load_image=True):
+  self.root=Path(root)/split; self.transform=transform; self.load_image=load_image
   with (Path(root)/(split+'_manifest.csv')).open() as f:self.rows=list(csv.DictReader(f))
  def __len__(self):return len(self.rows)
  def __getitem__(self,i):
-  r=self.rows[i]; im=self.transform(Image.open(self.root/r['image_path']).convert('RGB')); masks=[]
+  r=self.rows[i]; im=self.transform(Image.open(self.root/r['image_path']).convert('RGB')) if self.load_image else torch.zeros(1); masks=[]
   for c in CLASSES:
    p=self.root/'multiclass_annotations'/'masks'/(r['sample']+'__'+c+'.png')
    masks.append(torch.from_numpy((np.asarray(Image.open(p).convert('L').resize((518,518),Image.Resampling.NEAREST))>0).copy()).float() if r['category']=='annotated' else torch.zeros(518,518))
   return im,torch.stack(masks),int(r['category']=='annotated'),r['parent_id'],i
+
+class FeatureCache:
+ """Frozen CLIP features precomputed by build_feature_cache.py: tokens(sample) -> list of 4 [1,1369,1024] float tensors on device."""
+ def __init__(self,cache_dir,split,device):
+  self.dir=Path(cache_dir)/split; m=json.loads((self.dir/'manifest.json').read_text()); self.index={s:i for i,s in enumerate(m['samples'])}
+  self.globals=torch.load(self.dir/'globals.pt',map_location=device,weights_only=True); self.device=device
+ def tokens(self,sample):
+  arr=torch.from_numpy(np.load(self.dir/'tokens'/(sample+'.npy'))).to(self.device,non_blocking=True).float()   # [4,1369,1024]
+  return [arr[l].unsqueeze(0) for l in range(4)]
+ def global_feat(self,sample): return self.globals[self.index[sample]].unsqueeze(0)
 
 def binary_loss(p,y):
  p=p.clamp(1e-6,1-1e-6); focal=-(y*(1-p)**2*p.log()+(1-y)*p**2*(1-p).log()).mean(); dice=1-(2*(p*y).sum()+1)/(p.sum()+y.sum()+1); return focal+dice
@@ -123,14 +133,15 @@ def main():
  ap.add_argument('--anchor-set',choices=sorted(ANCHOR_SETS),default='full'); ap.add_argument('--bank',default=None,help='cached normal global vectors; default <out>/normal_globals.pt')
  ap.add_argument('--bg-target',choices=['loose','normal','pseudo'],default='loose'); ap.add_argument('--pseudo-conf',type=float,default=.5); ap.add_argument('--no-pseudo-center',action='store_true',help='disable class-prior centering of zero-shot similarities'); ap.add_argument('--freeze-nuisance',action='store_true'); ap.add_argument('--prior',choices=['init','hand'],default='init')
  ap.add_argument('--max-steps',type=int,default=0,help='smoke test: stop each epoch after this many steps')
- ap.add_argument('--arch',choices=['v0','v2'],default='v0'); ap.add_argument('--eps',type=float,default=.5); ap.add_argument('--tau-res',type=float,default=.25); ap.add_argument('--beta',type=float,default=.5); ap.add_argument('--lambda-ortho',type=float,default=.1); ap.add_argument('--lambda-type',type=float,default=1.); ap.add_argument('--res-warmup',type=int,default=2,help='epochs before the residual condition of the stratified target is enabled'); ap.add_argument('--res-cap',type=float,default=.3)
+ ap.add_argument('--cache-dir',default=None,help='feature cache root from build_feature_cache.py; skips all CLIP image forwards'); ap.add_argument('--arch',choices=['v0','v2'],default='v0'); ap.add_argument('--eps',type=float,default=.5); ap.add_argument('--tau-res',type=float,default=.25); ap.add_argument('--beta',type=float,default=.5); ap.add_argument('--lambda-ortho',type=float,default=.1); ap.add_argument('--lambda-type',type=float,default=1.); ap.add_argument('--res-warmup',type=int,default=2,help='epochs before the residual condition of the stratified target is enabled'); ap.add_argument('--res-cap',type=float,default=.3)
  args=ap.parse_args()
  if args.arch=='v2' and args.bg_target=='loose': args.bg_target='pseudo'   # v2 always uses the stratified target with centered zero-shot
  names=ANCHOR_SETS[args.anchor_set]; config=dict(vars(args),anchors=names)
  setup_seed(args.seed); out=Path(args.out); out.mkdir(parents=True,exist_ok=True); (out/'config.json').write_text(json.dumps(config,indent=2))
  device='cuda'; clip,_=adaptcliplib.load('ViT-L/14@336px',device=device); clip.visual.DAPM_replace(DPAM_layer=20); clip.eval()
  for p in clip.parameters():p.requires_grad_(False)
- transform,_=get_transform(518); train=Bridge(args.data,'train',transform); normal=[r for r in train.rows if r['category']=='normal']
+ transform,_=get_transform(518); fc=FeatureCache(args.cache_dir,'train',device) if args.cache_dir else None
+ train=Bridge(args.data,'train',transform,load_image=fc is None); normal=[r for r in train.rows if r['category']=='normal']
  # Cached global vectors for retrieval; only selected training normals enter the bank.
  cache=Path(args.bank) if args.bank else out/'normal_globals.pt'
  if cache.exists(): bank=torch.load(cache,map_location=device,weights_only=True)
@@ -153,17 +164,20 @@ def main():
  loader=DataLoader(train,batch_size=1,sampler=sampler,num_workers=4,pin_memory=True)
  for epoch in range(1,args.epochs+1):
   visual=epoch%2==1; head.train(); anchors.train(); opt=visual_opt if visual else text_opt; opt.zero_grad(set_to_none=True); losses=[]; pseudo_hist=torch.zeros(len(names)); bg_cells=0; strat={'defect_cells':0,'clean_cells':0,'suspicious_cells':0}
-  for step,(img,masks,label,parent,_) in enumerate(tqdm(loader,desc=f'epoch {epoch}/{args.epochs}')):
+  for step,(img,masks,label,parent,ii) in enumerate(tqdm(loader,desc=f'epoch {epoch}/{args.epochs}')):
    if args.max_steps and step>=args.max_steps: break
-   img=img.to(device); masks=masks.to(device); label=label.to(device)
+   masks=masks.to(device); label=label.to(device); sample=train.rows[int(ii[0])]['sample']
    with torch.no_grad():
-    global_feat,q=clip.encode_image(img,[6,12,18,24],proj_use=False,DPAM_layer=20); q=[x[:,1:].float() for x in q]; sim=F.normalize(global_feat.float(),dim=-1)@bank.T
+    if fc is not None: q=fc.tokens(sample); global_feat=fc.global_feat(sample)
+    else: global_feat,q=clip.encode_image(img.to(device),[6,12,18,24],proj_use=False,DPAM_layer=20); q=[x[:,1:].float() for x in q]
+    sim=F.normalize(global_feat.float(),dim=-1)@bank.T
     excluded=torch.tensor([r['parent_id']==parent[0] for r in normal],device=device); sim[:,excluded]=-float('inf')
     if random.random()<.05: inds=torch.nonzero(~excluded).flatten()[torch.randperm(int((~excluded).sum()),device=device)[:4]]
     else: inds=sim[0].topk(4).indices
     refs=[]
     for idx in inds.tolist():
-     refimg=transform(Image.open(train.root/normal[idx]['image_path']).convert('RGB')).unsqueeze(0).to(device); _,rf=clip.encode_image(refimg,[6,12,18,24],proj_use=False,DPAM_layer=20); refs.append([v[:,1:].float() for v in rf])
+     if fc is not None: refs.append(fc.tokens(normal[idx]['sample']))
+     else: refimg=transform(Image.open(train.root/normal[idx]['image_path']).convert('RGB')).unsqueeze(0).to(device); _,rf=clip.encode_image(refimg,[6,12,18,24],proj_use=False,DPAM_layer=20); refs.append([v[:,1:].float() for v in rf])
     ref=[torch.stack([x[l][0] for x in refs],0).unsqueeze(0) for l in range(4)]
     bg=None; zs=None
     if args.arch=='v2': zs=zero_shot_grid(q,clip,anchors.hand,bias=bias)

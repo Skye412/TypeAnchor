@@ -1,15 +1,17 @@
 """Exact rank-based AUROC, AP and max F1 for saved validation maps.
 
-Usage: python metrics_nuisance.py [run_dir] [split]   (defaults: runs/nuisance-v0/val-epoch20 val)
+Usage: python metrics_nuisance.py [run_dir] [split] [--exclude list.txt --suffix _clean]
 """
-import csv,json,sys
+import argparse,csv,json,sys
 from pathlib import Path
 import numpy as np
 from PIL import Image
 from sklearn.metrics import roc_auc_score,average_precision_score,precision_recall_curve
-r=Path(sys.argv[1] if len(sys.argv)>1 else 'runs/nuisance-v0/val-epoch20'); split=sys.argv[2] if len(sys.argv)>2 else 'val'
+from eval_filter import load_exclude,filter_rows
+ap=argparse.ArgumentParser(); ap.add_argument('run',nargs='?',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('split',nargs='?',default='val'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); a=ap.parse_args()
+r=Path(a.run); split=a.split
 data=Path('/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM')/split
-rows=list(csv.DictReader((r/'predictions.csv').open())); labels=np.array([int(x['label']) for x in rows]); scores=np.array([float(x['score']) for x in rows])
+rows=filter_rows(list(csv.DictReader((r/'predictions.csv').open())),load_exclude(a.exclude)); labels=np.array([int(x['label']) for x in rows]); scores=np.array([float(x['score']) for x in rows])
 pr,rc,_=precision_recall_curve(labels,scores); image={'I-AUROC':roc_auc_score(labels,scores),'I-AP':average_precision_score(labels,scores),'I-F1max':float(np.max(2*pr*rc/np.maximum(pr+rc,1e-30)))}
 # Original binary labels are resized by the official baseline preprocessing.
 y=[]; pred=[]
@@ -22,5 +24,5 @@ for row in rows:
 y=np.concatenate(y);pred=np.concatenate(pred); order=np.argsort(pred,kind='stable')[::-1]; sorted_y=y[order]; sorted_p=pred[order]; ends=np.r_[np.flatnonzero(np.diff(sorted_p)!=0),len(y)-1]; tp=np.cumsum(sorted_y,dtype=np.int64)[ends]; fp=ends+1-tp; total=tp[-1]; neg=len(y)-total
 rec=tp/total; precision=tp/(tp+fp); fpr=fp/neg; tpr=rec
 pixel={'P-AUROC':float(np.trapz(np.r_[0,tpr],np.r_[0,fpr])),'P-AP':float(np.sum(np.diff(np.r_[0,rec])*precision)),'P-F1max':float(np.max(2*precision*rec/np.maximum(precision+rec,1e-30)))}
-result={'images':len(rows),'split':split,'image_metrics':image,'pixel_metrics':pixel,'pixel_ground_truth':'original flattened union mask resized to 518','P-AUPRO':'see metrics_multiclass.json'}
-(r/'metrics.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2),flush=True)
+result={'images':len(rows),'split':split,'exclude':a.exclude,'image_metrics':image,'pixel_metrics':pixel,'pixel_ground_truth':'original flattened union mask resized to 518','P-AUPRO':'see metrics_multiclass.json'}
+(r/f'metrics{a.suffix}.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2),flush=True)

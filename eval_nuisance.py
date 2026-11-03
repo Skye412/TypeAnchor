@@ -50,6 +50,7 @@ def main():
     np.save(out/'typed'/(r['sample']+'.npy'),result['typed'][0].half().cpu().numpy())
     np.save(out/'residual'/(r['sample']+'.npy'),result['residual'][0,0].half().cpu().numpy())
     np.save(out/'nuisance'/(r['sample']+'.npy'),result['nuisance'][0,0].half().cpu().numpy())
+    if 'nu_up' in result: (out/'nu').mkdir(exist_ok=True); np.save(out/'nu'/(r['sample']+'.npy'),result['nu_up'][0,0].half().cpu().numpy())
    records.append({'sample':r['sample'],'label':int(r['category']=='annotated'),'score':float(score),'references':'|'.join(normals[i]['sample'] for i in ids)})
  with (out/'predictions.csv').open('w',newline='') as f:w=csv.DictWriter(f,fieldnames=records[0]);w.writeheader();w.writerows(records)
  (out/'provenance.json').write_text(json.dumps({'checkpoint':a.checkpoint,'sha256':hashlib.sha256(Path(a.checkpoint).read_bytes()).hexdigest(),'anchors':names,'split':a.split,'count':len(records),'references':'top4 training normal globals','bank':a.bank,'image_score':'0.5 image softmax + 0.5 top 1% binary map mean','map_size':518,'typed_maps_saved':a.save_typed},indent=2))
