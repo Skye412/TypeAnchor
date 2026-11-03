@@ -1,6 +1,11 @@
-# Nuisance-aware AdaptCLIP 模型与损失设计 v0.1（2026-10-29）
+# Nuisance-aware AdaptCLIP 模型与损失设计
 
-状态：设计稿，未实现。所有超参为初始值，待假阳性审计与验证集调整。
+- v0.2（2026-11-03）：现行实现 v2，见文末 §10；对应服务器 `nuisance_model.py` 的 `NuisanceHeadV2` / `explanation_loss_v2` 与 `train_nuisance.py` 的 `AnchorsV2`（提交 ae776d9 及之后）。
+- v0.1（2026-10-29）：首版设计，§1–§9。服务器 nuisance-v0 按此实现但有偏差（逐层视觉 MLP 替代共享适配器、3×3 卷积分割头、batch 1 + 8 步累积、L_pseudo 关闭）。
+
+## v0.1（2026-10-29）
+
+状态：首版设计稿。所有超参为初始值。
 
 ## 1. 记号与骨干
 - 骨干：CLIP ViT-L/14@336，冻结。输入 518×518，patch 网格 37×37，N = 1369，d = 1024。取层 l ∈ {6, 12, 18, 24} 的 patch token F_l ∈ R^{N×d}。文本编码器冻结，输出维 d_t = 768。
@@ -90,3 +95,41 @@
 - CLIP patch 局部语义弱：§3.2 池化是对策；若不足，视觉侧换 DINOv2-L/14 做 M1 残差、CLIP 只做 §3（需单独消融骨干增益）。
 - 干扰锚点坍缩为通用抑制：L_prior 与 P2 监控。
 - 多标签软目标与 softmax 的张力：若 per-class IoU 受损，改为 {正常, 类无关, 7 干扰} 9 路竞争 + 4 个独立 sigmoid 类型头，类型头乘以 ν 门控。
+
+## 10. v0.2：现行实现 v2（RC-HDG，2026-11-03）
+
+与 v0.1 的差别用"改"标出；未提及处沿用 §1–§2（骨干、M1 检索、残差头、图像头的输入）。
+
+### 10.1 锚点（改 §3.1）
+- 12 个锚点：T_0 正常、T_1..T_4 缺陷类型、T_5 类无关缺陷、T_6..T_11 干扰（water stain / shadow / moss / patch repair / formwork texture / dirt；graffiti 因 CODEBRIM 中不存在而删除）。
+- 不再学上下文 token，不再逐步过文本编码器。每个锚点 t_a = norm(t_a^hand + ε·Δ_a / max(1, ‖Δ_a‖))，t_a^hand 为 4 模板集成的手写提示嵌入，Δ_a ∈ R^768 可学，ε = 0.5。余弦下界 cos(asin ε) = 0.866，所有锚点自由度相同。实测 20 epoch 后全部锚点停在 0.867–0.890，即顶到上限。
+- L_ortho = Σ_{u<v, 干扰} max(0, cos(t_u, t_v) − cos(t_u^hand, t_v^hand))，权重 0.1。L_prior 取消（上界已由构造保证）。
+
+### 10.2 相似度与双路池化（改 §3.2）
+- 局部相似度 S^loc_{i,a} = cos(P_l F_{l,i}, t_a)/τ 四层平均；区域相似度 S^reg 为 §3.2 的残差加权 5×5 高斯池化（σ = 1.5）。
+- 逐锚点可学门 γ_a = sigmoid(g_a)，S̃_{i,a} = γ_a S^loc + (1 − γ_a) S^reg，g 初始化为 0（γ = 0.5）。实测 γ：剥落 0.22、泛碱 0.18、锈蚀 0.33、裂缝 0.59、正常 0.59、干扰 0.62–0.88。
+
+### 10.3 三元竞争与输出（改 §3.3–§3.4）
+- π_i = softmax(S̃_i) ∈ Δ^12；ν_i = Σ_{a=1..5} π_{i,a}（缺陷质量），μ_i = Σ_{a≥6} π_{i,a}（非缺陷偏离质量），π_{i,0} 为正常。
+- 类型头：p_{i,c} = sigmoid(s_c · (S̃_{i,c} − S̃_{i,0}) + b_c)，c = 1..4，s_c、b_c 可学（初始 1、0）。独立 sigmoid，允许重叠。
+- 输出：typed_c = up(p_c)（未门控）；typed_gated_c = typed_c · up(ν)；A_cls = A_res · up(ν)；A_bin = max(A_cls, max_c typed_gated_c)；未知缺陷 = A_cls 高且 max_c p_c 低。μ 图仅作解释与审计。
+- 图像头：对四层残差特征 z_l 按 (0.5 + 0.5ν) 逐格加权后做 mean/max 池化 → MLP → 2 类 logits。图像分数 = 0.5·softmax + 0.5·A_bin top-1% 均值。
+
+### 10.4 损失（改 §5）
+patch 级目标：缺陷格 = 任一类掩码在格内占比 ≥ 0.25。
+- L_res = Focal + Dice(A_res, Y_∪)；L_img = CE；L_cls = Focal + Dice(A_cls, Y_∪)，权重 0.5；L_type = 平均_c Focal + Dice(typed_gated_c, Y_c)，权重 1。
+- L_exp（残差条件化分层交叉熵）：
+  - 缺陷格：−log ν_i + 组内交叉熵 −Σ_c y_{i,c} log(π_{i,c}/ν_i)/Σy，软目标在同时为正的类上均分；以 p = 0.25 做类型 dropout，被丢弃类的目标改为 T_5。
+  - 干净背景格：−log π_{i,0}。
+  - 可疑背景格：0.5·(−log μ_i) + 0.5·KL(q_i^zs ‖ π_{i,6..}/μ_i)。q^zs 为冻结 CLIP 投影 patch token 与手写提示（正常 + 6 干扰）的四层平均余弦，减去 200 张训练正常图上的类均值后 softmax(100·)。可疑 = (σ(res_i) > 0.25 且在该图背景残差前 30%，前 2 epoch 不启用) 或 (max_u q^zs_{i,u} ≥ 0.5)。实测可疑格占全部格子约 10%。
+  - 无干扰锚点消融（6 锚点）：全部背景格为干净格。
+- 总损失 L = L_res + L_img + L_exp + 0.5 L_cls + L_type + 0.1 L_ortho。交替训练同 §5：奇数 epoch 更新头部，偶数 epoch 更新 Δ。20 epoch，AdamW lr 1e-3，batch 1 + 8 步累积（沿用 v0 实现）。
+
+### 10.5 训练数据与特征缓存
+- 冻结 CLIP 的四层 patch token（fp16）与全局嵌入预先缓存（`build_feature_cache.py`，训练 + 验证共 35 GB），训练时不做任何图像前向；步速 1.26 → 6–10 步/秒，20 epoch 约 1.5 小时。
+- 参考检索、同原图排除、5% 随机参考同 §4。
+
+### 10.6 已知结果与未验证项
+- 验证集：I-AUROC 93.0（基线 91.3），P-AP 68.1，P-AUPRO 90.3；Cleaned-Val 94.8 / 75.5 / 92.0；裂缝 P-AP 0.405。
+- 干扰锚点 T_6..T_11 在验证集上 argmax 占比 0.1%、μ 均值 0.056，未起作用；A_bin 分数整体偏低（TPR0.8 阈值 0.02），固定阈值指标跨版本不可比。
+- 进行中：6 锚点消融与 3 种子（`scripts/queue_v2.sh`）。未做：§9 的分辨率分支（v2b）、P1 / P3 / P4 / P5。
