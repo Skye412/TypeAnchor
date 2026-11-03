@@ -52,15 +52,16 @@ def main():
   per.sort(key=lambda d:-d['R_area'])
   # ---- contact sheets ----
   cmap=ListedColormap(COLORS)
+  tag=Path(a.v0).parent.name
   for d in per[:a.top]:
    s=d['sample']; im=np.asarray(Image.open(val.root/valrows[s]['image_path']).convert('RGB').resize((518,518)))
    m0=np.load(Path(a.v0)/'maps'/(s+'.npy')); m1=np.load(Path(a.abl)/'maps'/(s+'.npy'))
    fig,ax=plt.subplots(1,5,figsize=(22,4.8))
    ax[0].imshow(im); ax[0].set_title(s[-30:],fontsize=8)
    ax[1].imshow(im); ax[1].imshow(m1,cmap='jet',alpha=.5,vmin=0,vmax=1); ax[1].contour(m1>=thr_abl,levels=[.5],colors='w',linewidths=.8); ax[1].set_title('no-nuisance binary (thr %.2f, area %.1f%%)'%(thr_abl,100*d['abl_area']),fontsize=8)
-   ax[2].imshow(im); ax[2].imshow(m0,cmap='jet',alpha=.5,vmin=0,vmax=1); ax[2].contour(m0>=thr_v0,levels=[.5],colors='w',linewidths=.8); ax[2].set_title('v0 binary (thr %.2f, area %.1f%%)'%(thr_v0,100*d['v0_area']),fontsize=8)
-   amu=np.kron(d['am'],np.ones((14,14),int))[:518,:518]; ax[3].imshow(im); ax[3].imshow(amu,cmap=cmap,vmin=-.5,vmax=12.5,alpha=.55,interpolation='nearest'); ax[3].contour(d['R'],levels=[.5],colors='k',linewidths=1.2); ax[3].set_title('v0 argmax anchor; R outlined -> %s'%d['top_anchor_in_R'],fontsize=8)
-   ax[4].imshow(im); ax[4].imshow(np.kron(d['pi_nuis'],np.ones((14,14)))[:518,:518],cmap='magma',alpha=.6,vmin=0,vmax=1); ax[4].set_title('v0 nuisance mass (sum of 7)',fontsize=8)
+   ax[2].imshow(im); ax[2].imshow(m0,cmap='jet',alpha=.5,vmin=0,vmax=1); ax[2].contour(m0>=thr_v0,levels=[.5],colors='w',linewidths=.8); ax[2].set_title(tag+' binary (thr %.2f, area %.1f%%)'%(thr_v0,100*d['v0_area']),fontsize=8)
+   amu=np.kron(d['am'],np.ones((14,14),int))[:518,:518]; ax[3].imshow(im); ax[3].imshow(amu,cmap=cmap,vmin=-.5,vmax=12.5,alpha=.55,interpolation='nearest'); ax[3].contour(d['R'],levels=[.5],colors='k',linewidths=1.2); ax[3].set_title(tag+' argmax anchor; R outlined -> %s'%d['top_anchor_in_R'],fontsize=8)
+   ax[4].imshow(im); ax[4].imshow(np.kron(d['pi_nuis'],np.ones((14,14)))[:518,:518],cmap='magma',alpha=.6,vmin=0,vmax=1); ax[4].set_title(tag+' nuisance mass (sum of 7)',fontsize=8)
    for x in ax: x.axis('off')
    handles=[plt.Rectangle((0,0),1,1,color=COLORS[i]) for i in range(13)]; fig.legend(handles,SHORT,loc='lower center',ncol=13,fontsize=7,frameon=False)
    fig.tight_layout(rect=(0,.06,1,1)); fig.savefig(out/'sheets'/('%03d_%s.png'%(per.index(d),s)),dpi=90); plt.close(fig)
