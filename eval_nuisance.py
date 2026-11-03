@@ -12,8 +12,13 @@ import torch.nn.functional as F
 from PIL import Image
 from tqdm import tqdm
 import adaptcliplib
-from train_nuisance import Anchors,Bridge,NAMES
-from nuisance_model import NuisanceHead
+from train_nuisance import Anchors,AnchorsV2,Bridge,NAMES
+from nuisance_model import NuisanceHead,NuisanceHeadV2
+
+def build(clip,cfg,names,device):
+ """Head + anchors for a checkpoint config (v0 or v2 architecture)."""
+ if cfg.get('arch','v0')=='v2': return NuisanceHeadV2(n_anchors=len(names)).to(device).eval(),AnchorsV2(clip,names,eps=cfg.get('eps',.5)).to(device).eval()
+ return NuisanceHead(n_anchors=len(names)).to(device).eval(),Anchors(clip,names,freeze_nuisance=cfg.get('freeze_nuisance',False)).to(device).eval()
 from tools import get_transform,setup_seed
 
 def main():
@@ -26,7 +31,7 @@ def main():
  trans,_=get_transform(518); train=Bridge(a.data,'train',trans); data=Bridge(a.data,a.split,trans); normals=[r for r in train.rows if r['category']=='normal']
  bank=torch.load(a.bank,map_location=device,weights_only=True)
  ckpt=torch.load(a.checkpoint,map_location='cpu',weights_only=True); cfg=ckpt.get('config',{}); names=cfg.get('anchors',NAMES)
- head=NuisanceHead(n_anchors=len(names)).to(device).eval();head.load_state_dict(ckpt['head']);anchors=Anchors(clip,names,freeze_nuisance=cfg.get('freeze_nuisance',False)).to(device).eval();anchors.load_state_dict(ckpt['anchors'])
+ head,anchors=build(clip,cfg,names,device);head.load_state_dict(ckpt['head']);anchors.load_state_dict(ckpt['anchors'])
  cache={}; records=[]
  with torch.inference_mode():
   text=anchors(clip)

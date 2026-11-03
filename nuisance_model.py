@@ -77,3 +77,114 @@ def explanation_loss(pi, masks, dropout_probability=.25, bg_target=None):
         picked=pi.gather(1,bg_target.unsqueeze(1)).squeeze(1)
         loss[background]=-picked[background].clamp_min(1e-8).log()
     return loss.mean()
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# v2: residual-conditioned hierarchical decoupled gate (RC-HDG). See docs/results.md §2d.
+# Anchor layout: 0 normal, 1-4 defect types, 5 generic defect, 6.. nuisances (graffiti removed -> 12 anchors by default).
+# ---------------------------------------------------------------------------------------------------------------------
+N_DEFECT_GROUP=5  # anchors 1..5
+
+class NuisanceHeadV2(nn.Module):
+    """Differences from NuisanceHead:
+    * dual-path similarity: per-anchor learnable gate gamma mixes unsmoothed local similarity with the residual-weighted
+      5x5 regional pooling (thin cracks keep local evidence, blobs keep regional context);
+    * three-way competition read off the n-way softmax: nu = defect mass (anchors 1..5), mu = nuisance mass (6..);
+    * four independent sigmoid type heads on local similarity (multi-label; overlap allowed), gated by nu;
+    * image head pools residual features re-weighted by (0.5 + 0.5 nu) so high-residual nuisance regions are damped.
+    """
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5):
+        super().__init__()
+        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors
+        self.visual=nn.ModuleList([nn.Sequential(nn.Linear(token_dim,token_dim//4),nn.GELU(),nn.Linear(token_dim//4,token_dim)) for _ in range(4)])
+        self.projections=nn.ModuleList([nn.Linear(token_dim,text_dim) for _ in range(4)])
+        self.res_heads=nn.ModuleList([nn.Conv2d(2*token_dim,hidden,1) for _ in range(4)])
+        self.seg=nn.Sequential(nn.Conv2d(hidden,hidden,3,padding=1),nn.ReLU(),nn.Conv2d(hidden,1,1))
+        self.image=nn.Sequential(nn.Linear(hidden*8,hidden),nn.ReLU(),nn.Linear(hidden,2))
+        g=torch.full((n_anchors,),float(torch.logit(torch.tensor(gamma_init))))
+        self.gamma_logit=nn.Parameter(g)                       # per-anchor local/regional mix
+        self.type_scale=nn.Parameter(torch.ones(4)); self.type_bias=nn.Parameter(torch.zeros(4))   # sigmoid type heads
+        y,x=torch.meshgrid(torch.arange(-2,3),torch.arange(-2,3),indexing='ij')
+        kernel=torch.exp(-(x*x+y*y)/(2*sigma*sigma)).float().view(1,1,5,5)
+        self.register_buffer('kernel',kernel)
+
+    def forward(self,queries,references,text,output_size=518):
+        if text.shape[0]!=self.n_anchors: raise ValueError('Unexpected anchor count')
+        n_a=self.n_anchors
+        z=[]; semantic=[]
+        for i,(q,ref) in enumerate(zip(queries,references)):
+            b,n,d=q.shape
+            if n!=self.grid**2: raise ValueError('Unexpected patch grid')
+            bank=ref.reshape(b,-1,d)
+            with torch.no_grad():
+                indices=torch.cat([torch.cdist(part,bank).argmin(-1) for part in q.split(256,dim=1)],dim=1)
+                nearest=bank.gather(1,indices.unsqueeze(-1).expand(-1,-1,d))
+            adapted=q+self.visual[i](q)
+            feat=torch.cat((adapted,(adapted-nearest).abs()),dim=-1).transpose(1,2).reshape(b,2*d,self.grid,self.grid)
+            z.append(F.relu(self.res_heads[i](feat)))
+            semantic.append(F.normalize(self.projections[i](adapted),dim=-1) @ F.normalize(text,dim=-1).T / self.temperature)
+        combined=torch.stack(z).sum(0)
+        res_logits=self.seg(combined)                                               # [B,1,g,g]
+        weights=res_logits.sigmoid()
+        local=torch.stack(semantic).mean(0).transpose(1,2).reshape(-1,n_a,self.grid,self.grid)   # unsmoothed
+        denominator=F.conv2d(weights,self.kernel,padding=2).clamp_min(1e-8)
+        region=F.conv2d(local*weights,self.kernel.expand(n_a,1,-1,-1),padding=2,groups=n_a)/denominator
+        gamma=self.gamma_logit.sigmoid().view(1,n_a,1,1)
+        mixed=gamma*local+(1-gamma)*region
+        pi=mixed.softmax(1)                                                          # n-way, read as 3 groups
+        nu=pi[:,1:1+N_DEFECT_GROUP].sum(1,keepdim=True); mu=pi[:,1+N_DEFECT_GROUP:].sum(1,keepdim=True)
+        # multi-label type heads on local similarity relative to the normal anchor
+        margin=(local[:,1:5]-local[:,:1])*self.temperature                           # back to cosine units
+        p_type=(margin*self.type_scale.view(1,4,1,1)*(1/self.temperature)+self.type_bias.view(1,4,1,1)).sigmoid()
+        # image head on nu-gated residual features
+        gate=.5+.5*nu
+        pooled=torch.cat([torch.cat([(a*gate).mean((2,3)),(a*gate).amax((2,3))],1) for a in z],1)
+        image_logits=self.image(pooled)
+        up=lambda t:F.interpolate(t,size=(output_size,output_size),mode='bilinear',align_corners=False)
+        residual=up(res_logits).sigmoid(); nu_up=up(nu); mu_up=up(mu)
+        typed=up(p_type)*nu_up; generic=residual*nu_up
+        return {'residual':residual,'image_logits':image_logits,'pi':pi,'nu':nu,'mu':mu,'p_type':p_type,'res_weights':weights,
+                'typed':typed,'generic':generic,'binary':torch.maximum(generic,typed.amax(1,keepdim=True)),'nuisance':mu_up}
+
+def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.5,beta=.5,use_res=True,res_cap=.3):
+    """Residual-conditioned stratified supervision on the n-way pi [B,n,g,g].
+    defect cells (any class mask >= .25 of the cell): -log nu
+    background cells, low residual and no confident zero-shot nuisance: -log pi_normal
+    background cells, high residual (sigmoid res > tau_res, detached) or confident zero-shot nuisance:
+        beta * (-log mu) + (1-beta) * KL(q_zs || pi_nuis / mu)   where q_zs is the centered zero-shot distribution over nuisances.
+    zs_prob: [B,k,g,g] with k = 1 + n_nuisance (normal first), or None (then only the residual condition is used and the KL term is dropped).
+    Returns (loss, stats dict)."""
+    B,n,g,_=pi.shape; n_nuis=n-1-N_DEFECT_GROUP
+    target=F.adaptive_avg_pool2d(masks.float(),(g,g))>=.25
+    defect=target.any(1)                                                             # [B,g,g]
+    nu=pi[:,1:1+N_DEFECT_GROUP].sum(1); mu=pi[:,1+N_DEFECT_GROUP:].sum(1); p0=pi[:,0]
+    r=res_weights.detach()[:,0]
+    if use_res:
+        # absolute threshold AND within the top res_cap fraction of background cells of the image (guards the untrained-head regime)
+        bgvals=r[~defect]; cap=torch.quantile(bgvals,1-res_cap) if bgvals.numel() else r.new_tensor(float('inf'))
+        high=(r>tau_res)&(r>=cap)
+    else: high=torch.zeros_like(defect)
+    if zs_prob is not None:
+        q_nuis=zs_prob[:,1:]; conf=(q_nuis.max(1).values>=tau_conf)&(q_nuis.argmax(1)>=0)
+        suspicious=(high|conf)&~defect
+    else: suspicious=high&~defect
+    clean=~defect&~suspicious
+    loss=torch.zeros_like(p0)
+    loss[defect]=-nu[defect].clamp_min(1e-8).log()
+    loss[clean]=-p0[clean].clamp_min(1e-8).log()
+    if suspicious.any():
+        l=-beta*mu.clamp_min(1e-8).log()
+        if zs_prob is not None:
+            pi_n=pi[:,1+N_DEFECT_GROUP:]/mu.unsqueeze(1).clamp_min(1e-8)
+            q=q_nuis/q_nuis.sum(1,keepdim=True).clamp_min(1e-8)
+            kl=(q*(q.clamp_min(1e-8).log()-pi_n.clamp_min(1e-8).log())).sum(1)
+            l=l+(1-beta)*kl
+        loss[suspicious]=l[suspicious]
+    stats={'defect_cells':int(defect.sum()),'clean_cells':int(clean.sum()),'suspicious_cells':int(suspicious.sum())}
+    return loss.mean(),stats
+
+def ortho_loss(text,hand,start=1+N_DEFECT_GROUP):
+    """Penalise nuisance anchors that grow more similar to each other than their hand prompts are."""
+    t=F.normalize(text[start:],dim=-1); h=F.normalize(hand[start:],dim=-1)
+    ct=t@t.T; ch=h@h.T; iu=torch.triu_indices(t.shape[0],t.shape[0],1,device=t.device)
+    return F.relu(ct[iu[0],iu[1]]-ch[iu[0],iu[1]]).sum()

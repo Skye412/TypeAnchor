@@ -17,13 +17,14 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset,DataLoader,WeightedRandomSampler
 import adaptcliplib
 from adaptcliplib.adaptclip import tokenize
-from nuisance_model import NuisanceHead,explanation_loss
+from nuisance_model import NuisanceHead,explanation_loss,NuisanceHeadV2,explanation_loss_v2,ortho_loss
 from tools import get_transform,setup_seed
 from tqdm import tqdm
 
 NAMES=['intact concrete surface','crack on concrete','rust stain on concrete','spalling on concrete','efflorescence on concrete','damaged concrete surface','water stain on concrete','shadow on concrete','moss on concrete','patch repair on concrete','graffiti on concrete','formwork texture on concrete','dirt on concrete']
-# Anchor sets: 'full' = 13 anchors; 'no-nuisance' drops the seven nuisance anchors (aggregate form of prediction P2).
-ANCHOR_SETS={'full':NAMES,'no-nuisance':NAMES[:6]}
+# Anchor sets: 'full' = 13 anchors; 'no-nuisance' drops the seven nuisance anchors (aggregate form of prediction P2);
+# 'v2' drops graffiti (absent from CODEBRIM) -> 12 anchors.
+ANCHOR_SETS={'full':NAMES,'no-nuisance':NAMES[:6],'v2':[n for n in NAMES if not n.startswith('graffiti')]}
 TEMPLATES=['a photo of {}','a close-up photo of {} on a bridge','{} on a concrete wall','an inspection image showing {}']
 CLASSES=['Crack','Corrosion','Spalling','Efflorescence']
 N_FIXED=6  # anchors 0..5 (normal, 4 defect types, generic defect) always learn; 6.. are nuisances
@@ -54,6 +55,18 @@ class Anchors(nn.Module):
   learned=F.normalize(torch.stack([f[self.groups==i].mean(0) for i in range(len(self.names))]),dim=-1)
   if self.freeze_nuisance and len(self.names)>N_FIXED: learned=torch.cat([learned[:N_FIXED],self.hand[N_FIXED:]],0)
   return learned
+
+class AnchorsV2(nn.Module):
+ """Symmetric, norm-bounded anchors: t_a = normalize(hand_a + eps * delta_a / max(1, |delta_a|)).
+ Every anchor (normal, defects, nuisances) gets the same freedom; cos(t_a, hand_a) >= 1/sqrt(1+eps^2) (0.894 at eps=0.5).
+ No text-encoder forward per step."""
+ def __init__(self,clip,names,eps=.5):
+  super().__init__(); self.names=list(names); self.eps=eps
+  base=Anchors(clip,names); self.register_buffer('hand',base.hand.clone()); del base
+  self.delta=nn.Parameter(torch.zeros(len(self.names),self.hand.shape[1]))
+ def forward(self,clip=None):
+  d=self.delta; d=d/d.norm(dim=-1,keepdim=True).clamp_min(1.)
+  return F.normalize(self.hand+self.eps*d,dim=-1)
 
 class Bridge(Dataset):
  def __init__(self,root,split,transform):
@@ -89,6 +102,13 @@ def pseudo_background(q,clip,hand,conf,bias=None,grid=37,scale=100.):
  return target.view(1,grid,grid),prob
 
 @torch.no_grad()
+def zero_shot_grid(q,clip,hand,bias=None,grid=37,scale=100.):
+ """Centered zero-shot distribution over [normal + nuisances] for every cell -> [1,k,grid,grid]."""
+ idx=torch.tensor([0]+list(range(N_FIXED,hand.shape[0])),device=hand.device); sims=zero_shot_sims(q,clip,hand[idx])
+ if bias is not None: sims=sims-bias
+ return (scale*sims).softmax(-1).T.reshape(1,len(idx),grid,grid)
+
+@torch.no_grad()
 def zero_shot_bias(clip,hand,train,normal,transform,device,n=200,seed=0):
  """Per-class mean zero-shot similarity over cells of n random training normals (class-prior correction)."""
  idx=torch.tensor([0]+list(range(N_FIXED,hand.shape[0])),device=hand.device); cand=hand[idx]; acc=torch.zeros(len(idx),device=device); cnt=0
@@ -103,7 +123,9 @@ def main():
  ap.add_argument('--anchor-set',choices=sorted(ANCHOR_SETS),default='full'); ap.add_argument('--bank',default=None,help='cached normal global vectors; default <out>/normal_globals.pt')
  ap.add_argument('--bg-target',choices=['loose','normal','pseudo'],default='loose'); ap.add_argument('--pseudo-conf',type=float,default=.5); ap.add_argument('--no-pseudo-center',action='store_true',help='disable class-prior centering of zero-shot similarities'); ap.add_argument('--freeze-nuisance',action='store_true'); ap.add_argument('--prior',choices=['init','hand'],default='init')
  ap.add_argument('--max-steps',type=int,default=0,help='smoke test: stop each epoch after this many steps')
+ ap.add_argument('--arch',choices=['v0','v2'],default='v0'); ap.add_argument('--eps',type=float,default=.5); ap.add_argument('--tau-res',type=float,default=.25); ap.add_argument('--beta',type=float,default=.5); ap.add_argument('--lambda-ortho',type=float,default=.1); ap.add_argument('--lambda-type',type=float,default=1.); ap.add_argument('--res-warmup',type=int,default=2,help='epochs before the residual condition of the stratified target is enabled'); ap.add_argument('--res-cap',type=float,default=.3)
  args=ap.parse_args()
+ if args.arch=='v2' and args.bg_target=='loose': args.bg_target='pseudo'   # v2 always uses the stratified target with centered zero-shot
  names=ANCHOR_SETS[args.anchor_set]; config=dict(vars(args),anchors=names)
  setup_seed(args.seed); out=Path(args.out); out.mkdir(parents=True,exist_ok=True); (out/'config.json').write_text(json.dumps(config,indent=2))
  device='cuda'; clip,_=adaptcliplib.load('ViT-L/14@336px',device=device); clip.visual.DAPM_replace(DPAM_layer=20); clip.eval()
@@ -119,17 +141,18 @@ def main():
    with torch.no_grad(): g,_=clip.encode_image(x,[6,12,18,24],proj_use=False,DPAM_layer=20)
    bank.append(F.normalize(g.float(),dim=-1).cpu())
   bank=torch.cat(bank); torch.save(bank,cache); bank=bank.to(device)
- head=NuisanceHead(n_anchors=len(names)).to(device); anchors=Anchors(clip,names,freeze_nuisance=args.freeze_nuisance).to(device)
+ if args.arch=='v2': head=NuisanceHeadV2(n_anchors=len(names)).to(device); anchors=AnchorsV2(clip,names,eps=args.eps).to(device)
+ else: head=NuisanceHead(n_anchors=len(names)).to(device); anchors=Anchors(clip,names,freeze_nuisance=args.freeze_nuisance).to(device)
  with torch.no_grad(): prior=(anchors.hand if args.prior=='hand' else anchors(clip)).detach().clone()
  learn_rows=N_FIXED if (args.freeze_nuisance and len(names)>N_FIXED) else len(names)
  bias=None
- if args.bg_target=='pseudo' and not args.no_pseudo_center:
+ if args.bg_target in ('pseudo',) and not args.no_pseudo_center:
   bias=zero_shot_bias(clip,anchors.hand,train,normal,transform,device); torch.save(bias.cpu(),out/'zs_bias.pt'); print('zero-shot bias',[round(float(b),4) for b in bias],flush=True)
  visual_opt=torch.optim.AdamW(head.parameters(),lr=.001); text_opt=torch.optim.AdamW(anchors.parameters(),lr=.001)
  weights=torch.tensor([1/(sum(r['category']==c for r in train.rows)) for c in ('normal','annotated')]); sampleweights=torch.tensor([weights[int(r['category']=='annotated')] for r in train.rows]); sampler=WeightedRandomSampler(sampleweights,len(train),replacement=True,generator=torch.Generator().manual_seed(args.seed))
  loader=DataLoader(train,batch_size=1,sampler=sampler,num_workers=4,pin_memory=True)
  for epoch in range(1,args.epochs+1):
-  visual=epoch%2==1; head.train(); anchors.train(); opt=visual_opt if visual else text_opt; opt.zero_grad(set_to_none=True); losses=[]; pseudo_hist=torch.zeros(len(names)); bg_cells=0
+  visual=epoch%2==1; head.train(); anchors.train(); opt=visual_opt if visual else text_opt; opt.zero_grad(set_to_none=True); losses=[]; pseudo_hist=torch.zeros(len(names)); bg_cells=0; strat={'defect_cells':0,'clean_cells':0,'suspicious_cells':0}
   for step,(img,masks,label,parent,_) in enumerate(tqdm(loader,desc=f'epoch {epoch}/{args.epochs}')):
    if args.max_steps and step>=args.max_steps: break
    img=img.to(device); masks=masks.to(device); label=label.to(device)
@@ -142,19 +165,29 @@ def main():
     for idx in inds.tolist():
      refimg=transform(Image.open(train.root/normal[idx]['image_path']).convert('RGB')).unsqueeze(0).to(device); _,rf=clip.encode_image(refimg,[6,12,18,24],proj_use=False,DPAM_layer=20); refs.append([v[:,1:].float() for v in rf])
     ref=[torch.stack([x[l][0] for x in refs],0).unsqueeze(0) for l in range(4)]
-    bg=None
-    if args.bg_target=='normal': bg=torch.zeros(1,37,37,dtype=torch.long,device=device)
+    bg=None; zs=None
+    if args.arch=='v2': zs=zero_shot_grid(q,clip,anchors.hand,bias=bias)
+    elif args.bg_target=='normal': bg=torch.zeros(1,37,37,dtype=torch.long,device=device)
     elif args.bg_target=='pseudo':
      bg,_=pseudo_background(q,clip,anchors.hand,args.pseudo_conf,bias=bias)
      cell_bg=F.adaptive_avg_pool2d(masks.amax(1,keepdim=True),37)[0,0]<.25; pseudo_hist+=torch.bincount(bg[0][cell_bg],minlength=len(names)).cpu(); bg_cells+=int(cell_bg.sum())
    text=anchors(clip) if not visual else anchors(clip).detach()
    output=head(q,ref,text); union=masks.amax(1,keepdim=True)
-   loss=binary_loss(output['residual'],union)+F.cross_entropy(output['image_logits'],label)+explanation_loss(output['pi'],masks,bg_target=bg)+.5*binary_loss(output['generic'],union)+(1-F.cosine_similarity(text[:learn_rows],prior[:learn_rows],dim=-1)).sum()
+   if args.arch=='v2':
+    l_exp,st=explanation_loss_v2(output['pi'],masks,output['res_weights'],zs_prob=zs,tau_res=args.tau_res,tau_conf=args.pseudo_conf,beta=args.beta,use_res=epoch>args.res_warmup,res_cap=args.res_cap)
+    for k in strat: strat[k]+=st[k]
+    l_type=sum(binary_loss(output['typed'][:,c:c+1],masks[:,c:c+1]) for c in range(4))/4
+    loss=binary_loss(output['residual'],union)+F.cross_entropy(output['image_logits'],label)+l_exp+.5*binary_loss(output['generic'],union)+args.lambda_type*l_type+args.lambda_ortho*ortho_loss(text,anchors.hand)
+   else:
+    loss=binary_loss(output['residual'],union)+F.cross_entropy(output['image_logits'],label)+explanation_loss(output['pi'],masks,bg_target=bg)+.5*binary_loss(output['generic'],union)+(1-F.cosine_similarity(text[:learn_rows],prior[:learn_rows],dim=-1)).sum()
    (loss/8).backward(); losses.append(loss.item())
    if (step+1)%8==0 or step+1==len(loader): opt.step(); opt.zero_grad(set_to_none=True)
   stats={'epoch':epoch,'loss':sum(losses)/len(losses)}
   if args.bg_target=='pseudo' and bg_cells: stats['pseudo_share']={names[i].split(' on ')[0]:round(float(pseudo_hist[i]/bg_cells),4) for i in range(len(names)) if pseudo_hist[i]>0}
+  if args.arch=='v2':
+   tot=max(1,sum(strat.values())); stats['strata']={k:round(v/tot,4) for k,v in strat.items()}
+   with torch.no_grad(): t=anchors(clip); stats['anchor_cos_to_hand']=[round(float(x),3) for x in F.cosine_similarity(t,anchors.hand,dim=-1)]; stats['gamma']=[round(float(x),3) for x in head.gamma_logit.sigmoid()]
   torch.save({'epoch':epoch,'head':head.state_dict(),'anchors':anchors.state_dict(),'config':config,'loss':stats['loss']},out/f'epoch_{epoch}.pth')
   with (out/'train_log.jsonl').open('a') as f: f.write(json.dumps(stats)+'\n')
-  print(f'epoch {epoch}/{args.epochs} loss={stats["loss"]:.6f} '+json.dumps(stats.get('pseudo_share',{})),flush=True)
+  print(f'epoch {epoch}/{args.epochs} loss={stats["loss"]:.6f} '+json.dumps({k:v for k,v in stats.items() if k not in ('epoch','loss')}),flush=True)
 if __name__=='__main__': main()
