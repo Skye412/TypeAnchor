@@ -58,7 +58,7 @@ class Anchors(nn.Module):
 
 class AnchorsV2(nn.Module):
  """Symmetric, norm-bounded anchors: t_a = normalize(hand_a + eps * delta_a / max(1, |delta_a|)).
- Every anchor (normal, defects, nuisances) gets the same freedom; cos(t_a, hand_a) >= 1/sqrt(1+eps^2) (0.894 at eps=0.5).
+ Every anchor (normal, defects, nuisances) gets the same freedom; cos(t_a, hand_a) >= cos(asin(eps)) = sqrt(1-eps^2) (0.866 at eps=0.5; the offset may tilt against hand_a).
  No text-encoder forward per step."""
  def __init__(self,clip,names,eps=.5):
   super().__init__(); self.names=list(names); self.eps=eps
