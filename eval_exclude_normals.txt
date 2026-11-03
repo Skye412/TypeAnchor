@@ -1,6 +1,9 @@
-# Cleaned-Val exclusion list: validation images filed as "normal" that visibly contain defects
-# (reviewed on runs/normal_review/top30_normal_by_v1fix_score.png, 2026-11-03). Edit freely; one sample per line.
-# Nuisance-only images (formwork joint 01162, soil/debris 00033 x0000_y0000, peeling paint 01219, scribble 00804) are kept.
+# Cleaned-Val exclusion list: validation images filed as "normal" that visibly contain defects.
+# Reviewed on runs/normal_review/top30_normal_by_v1fix_score.png and the individual tiles, 2026-11-03 (second pass:
+# two coordinate typos fixed, 00165 and codebrim_0000332 added after tile-level inspection). One sample per line.
+# Kept as normal on purpose (nuisance-only or artefact): 01162 formwork joint, 00033 x0512_y0000 soil/debris, 01219 peeling
+# paint, 00804 blue scribble, 00635 joint/holes, 00277 x0512_y0512 stain streak + horizontal joint, 00137 x0000_y0512 edge
+# tile that is three-quarters padding, codebrim_image_0000386 tile with pinholes and one small rust spot.
 normal_01145__tile_x0512_y0000   # wide crack
 normal_01145__tile_x0512_y0512   # wide crack
 normal_00116__tile_x0512_y0000   # exposed corroded rebar + gravel
@@ -10,13 +13,15 @@ normal_01130__tile_x0512_y0000   # hairline crack network
 normal_00180__tile_x0512_y0512   # exposed corroded rebar
 normal_00180__tile_x0000_y0512   # exposed corroded rebar
 normal_00297__tile_x0512_y0512   # rust
-normal_00297__tile_x0000_y0000   # rust
+normal_00297__tile_x0512_y0000   # rust-brown mottled area (was mistyped as x0000_y0000, which is not in val)
 normal_00181__tile_x0000_y0000   # exposed rebar
-normal_00181__tile_x0000_y0512   # cavity with rebar
+normal_00181__tile_x0000_y0512   # deep cavity (spalling) with crack
 normal_00230__tile_x0000_y0512   # hairline crack
 normal_00055__tile_x0512_y0000   # crack
 normal_00271__tile_x0000_y0512   # rust stains
 normal_00271__tile_x0000_y0000   # rust stains
 normal_00953__tile_x0000_y0000   # corroded rebar
-normal_00277__tile_x0512_y0512   # crack with efflorescence
+normal_00277__tile_x0512_y0000   # thin vertical crack beside a stain streak (was mistyped as x0512_y0512)
 normal_00778__tile_x0000_y0512   # rust
+normal_00165__tile_x0000_y0000   # diagonal hairline crack + rust spot at the top edge
+codebrim_image_0000332_x2048_y0000__tile_x0000_y0512   # clear diagonal hairline crack on painted surface, unannotated region of an annotated source image
