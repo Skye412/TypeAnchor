@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from eval_filter import load_exclude,filter_rows
-ap=argparse.ArgumentParser(); ap.add_argument('runs',nargs='+'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); a=ap.parse_args()
-data=Path("/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM/val"); excl=load_exclude(a.exclude)
+ap=argparse.ArgumentParser(); ap.add_argument('runs',nargs='+'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--split',default='val'); a=ap.parse_args()
+data=Path(a.data)/a.split; excl=load_exclude(a.exclude)
 out={}
 for run in a.runs:
  r=Path(run); rows=filter_rows(list(csv.DictReader((r/"predictions.csv").open())),excl); pos=[];neg=[];nm=[]

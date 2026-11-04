@@ -16,7 +16,15 @@ from PIL import Image
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from metrics import AUPRO
 CLASSES=['Crack','Corrosion','Spalling','Efflorescence']
+PALETTE={'Crack':(255,0,0),'Corrosion':(0,0,255),'Spalling':(0,255,0),'Efflorescence':(255,255,0)}   # flattened RGB masks (priority crack>corrosion>spalling>efflorescence); verified against multiclass_annotations 2026-11-04
 THRS=np.round(np.linspace(.05,.95,19),2)
+
+def class_mask(data,sample,c,mask_rel=None):
+ """Per-class GT at 518: independent masks when multiclass_annotations exists (overlap allowed), else decoded from the flattened RGB mask (single label)."""
+ p=data/'multiclass_annotations'/'masks'/(sample+'__'+c+'.png')
+ if p.exists(): return np.asarray(Image.open(p).convert('L').resize((518,518),Image.Resampling.NEAREST))>0
+ rgb=np.asarray(Image.open(data/(mask_rel or ('annotated/'+sample+'.png'))).convert('RGB').resize((518,518),Image.Resampling.NEAREST))
+ return np.all(rgb==np.array(PALETTE[c],dtype=np.uint8),axis=-1)
 
 def rank_metrics(y,s):
  """Exact AUROC/AP via a full sort (same procedure as metrics_nuisance.py)."""
@@ -51,7 +59,7 @@ def main():
    t=np.load(r/'typed'/(row['sample']+'.npy'))[ci].astype(np.float32); res=np.load(r/'residual'/(row['sample']+'.npy')).astype(np.float32)
    cur={'typed':t,'gated':t*res}
    if has_nu: cur['nugated']=t*np.load(r/'nu'/(row['sample']+'.npy')).astype(np.float32)
-   if row['label']=='1': g=np.asarray(Image.open(data/'multiclass_annotations'/'masks'/(row['sample']+'__'+c+'.png')).convert('L').resize((518,518),Image.Resampling.NEAREST))>0
+   if row['label']=='1': g=class_mask(data,row['sample'],c)
    else:
     g=np.zeros((518,518),bool)
     for v in variants: nms[v].append(cur[v].ravel())

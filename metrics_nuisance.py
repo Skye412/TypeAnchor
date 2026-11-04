@@ -8,9 +8,9 @@ import numpy as np
 from PIL import Image
 from sklearn.metrics import roc_auc_score,average_precision_score,precision_recall_curve
 from eval_filter import load_exclude,filter_rows
-ap=argparse.ArgumentParser(); ap.add_argument('run',nargs='?',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('split',nargs='?',default='val'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); a=ap.parse_args()
+ap=argparse.ArgumentParser(); ap.add_argument('run',nargs='?',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('split',nargs='?',default='val'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); a=ap.parse_args()
 r=Path(a.run); split=a.split
-data=Path('/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM')/split
+data=Path(a.data)/split
 rows=filter_rows(list(csv.DictReader((r/'predictions.csv').open())),load_exclude(a.exclude)); labels=np.array([int(x['label']) for x in rows]); scores=np.array([float(x['score']) for x in rows])
 pr,rc,_=precision_recall_curve(labels,scores); image={'I-AUROC':roc_auc_score(labels,scores),'I-AP':average_precision_score(labels,scores),'I-F1max':float(np.max(2*pr*rc/np.maximum(pr+rc,1e-30)))}
 # Original binary labels are resized by the official baseline preprocessing.

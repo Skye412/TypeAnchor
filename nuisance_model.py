@@ -93,16 +93,19 @@ class NuisanceHeadV2(nn.Module):
     * four independent sigmoid type heads on local similarity (multi-label; overlap allowed), gated by nu;
     * image head pools residual features re-weighted by (0.5 + 0.5 nu) so high-residual nuisance regions are damped.
     """
-    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5):
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5, nu_gate=True, gamma_fixed=None):
+        """nu_gate=False: ablation without nu gating (image head pools raw residual features; generic = residual; typed not gated).
+        gamma_fixed in {0.,1.}: ablation with gamma frozen at pure regional (0) or pure local (1) similarity."""
         super().__init__()
-        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors
+        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors; self.nu_gate=nu_gate; self.gamma_fixed=gamma_fixed
         self.visual=nn.ModuleList([nn.Sequential(nn.Linear(token_dim,token_dim//4),nn.GELU(),nn.Linear(token_dim//4,token_dim)) for _ in range(4)])
         self.projections=nn.ModuleList([nn.Linear(token_dim,text_dim) for _ in range(4)])
         self.res_heads=nn.ModuleList([nn.Conv2d(2*token_dim,hidden,1) for _ in range(4)])
         self.seg=nn.Sequential(nn.Conv2d(hidden,hidden,3,padding=1),nn.ReLU(),nn.Conv2d(hidden,1,1))
         self.image=nn.Sequential(nn.Linear(hidden*8,hidden),nn.ReLU(),nn.Linear(hidden,2))
         g=torch.full((n_anchors,),float(torch.logit(torch.tensor(gamma_init))))
-        self.gamma_logit=nn.Parameter(g)                       # per-anchor local/regional mix
+        if gamma_fixed is not None: g=torch.full((n_anchors,),12. if gamma_fixed>=.5 else -12.)
+        self.gamma_logit=nn.Parameter(g,requires_grad=gamma_fixed is None)   # per-anchor local/regional mix
         self.type_scale=nn.Parameter(torch.ones(4)); self.type_bias=nn.Parameter(torch.zeros(4))   # sigmoid type heads
         y,x=torch.meshgrid(torch.arange(-2,3),torch.arange(-2,3),indexing='ij')
         kernel=torch.exp(-(x*x+y*y)/(2*sigma*sigma)).float().view(1,1,5,5)
@@ -138,12 +141,14 @@ class NuisanceHeadV2(nn.Module):
         margin=(mixed[:,1:5]-mixed[:,:1])*self.temperature                           # back to cosine units
         p_type=(margin*self.type_scale.view(1,4,1,1)*(1/self.temperature)+self.type_bias.view(1,4,1,1)).sigmoid()
         # image head on nu-gated residual features
-        gate=.5+.5*nu
+        gate=.5+.5*nu if self.nu_gate else torch.ones_like(nu)
         pooled=torch.cat([torch.cat([(a*gate).mean((2,3)),(a*gate).amax((2,3))],1) for a in z],1)
         image_logits=self.image(pooled)
         up=lambda t:F.interpolate(t,size=(output_size,output_size),mode='bilinear',align_corners=False)
         residual=up(res_logits).sigmoid(); nu_up=up(nu); mu_up=up(mu)
-        typed=up(p_type); typed_gated=typed*nu_up; generic=residual*nu_up
+        typed=up(p_type)
+        if self.nu_gate: typed_gated=typed*nu_up; generic=residual*nu_up
+        else: typed_gated=typed; generic=residual
         # 'typed' is the ungated multi-label probability (same meaning as v0's typed = pi_c); 'typed_gated' = typed * nu is the
         # model's own output and feeds the binary map. Evaluation reports typed, typed*residual and typed*nu separately.
         return {'residual':residual,'image_logits':image_logits,'pi':pi,'nu':nu,'mu':mu,'p_type':p_type,'res_weights':weights,
