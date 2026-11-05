@@ -134,7 +134,7 @@ def main():
  ap.add_argument('--bg-target',choices=['loose','normal','pseudo'],default='loose'); ap.add_argument('--pseudo-conf',type=float,default=.5); ap.add_argument('--no-pseudo-center',action='store_true',help='disable class-prior centering of zero-shot similarities'); ap.add_argument('--freeze-nuisance',action='store_true'); ap.add_argument('--prior',choices=['init','hand'],default='init')
  ap.add_argument('--max-steps',type=int,default=0,help='smoke test: stop each epoch after this many steps')
  ap.add_argument('--cache-dir',default=None,help='feature cache root from build_feature_cache.py; skips all CLIP image forwards'); ap.add_argument('--arch',choices=['v0','v2'],default='v0'); ap.add_argument('--eps',type=float,default=.5); ap.add_argument('--tau-res',type=float,default=.25); ap.add_argument('--beta',type=float,default=.5); ap.add_argument('--lambda-ortho',type=float,default=.1); ap.add_argument('--lambda-type',type=float,default=1.); ap.add_argument('--res-warmup',type=int,default=2,help='epochs before the residual condition of the stratified target is enabled'); ap.add_argument('--res-cap',type=float,default=.3)
- ap.add_argument('--no-nu-gate',action='store_true',help='v2 ablation: drop nu gating of image head, generic channel and type heads'); ap.add_argument('--gamma-fixed',type=float,default=None,help='v2 ablation: freeze gamma at 0 (regional) or 1 (local)')
+ ap.add_argument('--no-nu-gate',action='store_true',help='v2 ablation: drop nu gating of image head, generic channel and type heads'); ap.add_argument('--gamma-fixed',type=float,default=None,help='v2 ablation: freeze gamma at 0 (regional) or 1 (local)'); ap.add_argument('--no-residual',action='store_true',help='v2 ablation: zero the reference residual; no references are loaded')
  args=ap.parse_args()
  if args.arch=='v2' and args.bg_target=='loose': args.bg_target='pseudo'   # v2 always uses the stratified target with centered zero-shot
  names=ANCHOR_SETS[args.anchor_set]; config=dict(vars(args),anchors=names)
@@ -153,7 +153,7 @@ def main():
    with torch.no_grad(): g,_=clip.encode_image(x,[6,12,18,24],proj_use=False,DPAM_layer=20)
    bank.append(F.normalize(g.float(),dim=-1).cpu())
   bank=torch.cat(bank); torch.save(bank,cache); bank=bank.to(device)
- if args.arch=='v2': head=NuisanceHeadV2(n_anchors=len(names),nu_gate=not args.no_nu_gate,gamma_fixed=args.gamma_fixed).to(device); anchors=AnchorsV2(clip,names,eps=args.eps).to(device)
+ if args.arch=='v2': head=NuisanceHeadV2(n_anchors=len(names),nu_gate=not args.no_nu_gate,gamma_fixed=args.gamma_fixed,use_residual=not args.no_residual).to(device); anchors=AnchorsV2(clip,names,eps=args.eps).to(device)
  else: head=NuisanceHead(n_anchors=len(names)).to(device); anchors=Anchors(clip,names,freeze_nuisance=args.freeze_nuisance).to(device)
  with torch.no_grad(): prior=(anchors.hand if args.prior=='hand' else anchors(clip)).detach().clone()
  learn_rows=N_FIXED if (args.freeze_nuisance and len(names)>N_FIXED) else len(names)
@@ -176,10 +176,10 @@ def main():
     if random.random()<.05: inds=torch.nonzero(~excluded).flatten()[torch.randperm(int((~excluded).sum()),device=device)[:4]]
     else: inds=sim[0].topk(4).indices
     refs=[]
-    for idx in inds.tolist():
+    for idx in ([] if args.no_residual else inds.tolist()):
      if fc is not None: refs.append(fc.tokens(normal[idx]['sample']))
      else: refimg=transform(Image.open(train.root/normal[idx]['image_path']).convert('RGB')).unsqueeze(0).to(device); _,rf=clip.encode_image(refimg,[6,12,18,24],proj_use=False,DPAM_layer=20); refs.append([v[:,1:].float() for v in rf])
-    ref=[torch.stack([x[l][0] for x in refs],0).unsqueeze(0) for l in range(4)]
+    ref=None if args.no_residual else [torch.stack([x[l][0] for x in refs],0).unsqueeze(0) for l in range(4)]
     bg=None; zs=None
     if args.arch=='v2': zs=zero_shot_grid(q,clip,anchors.hand,bias=bias)
     elif args.bg_target=='normal': bg=torch.zeros(1,37,37,dtype=torch.long,device=device)

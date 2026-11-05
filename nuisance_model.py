@@ -93,11 +93,11 @@ class NuisanceHeadV2(nn.Module):
     * four independent sigmoid type heads on local similarity (multi-label; overlap allowed), gated by nu;
     * image head pools residual features re-weighted by (0.5 + 0.5 nu) so high-residual nuisance regions are damped.
     """
-    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5, nu_gate=True, gamma_fixed=None):
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5, nu_gate=True, gamma_fixed=None, use_residual=True):
         """nu_gate=False: ablation without nu gating (image head pools raw residual features; generic = residual; typed not gated).
         gamma_fixed in {0.,1.}: ablation with gamma frozen at pure regional (0) or pure local (1) similarity."""
         super().__init__()
-        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors; self.nu_gate=nu_gate; self.gamma_fixed=gamma_fixed
+        self.grid=grid; self.temperature=temperature; self.n_anchors=n_anchors; self.nu_gate=nu_gate; self.gamma_fixed=gamma_fixed; self.use_residual=use_residual   # use_residual=False: ablation, reference residual replaced by zeros (references unused)
         self.visual=nn.ModuleList([nn.Sequential(nn.Linear(token_dim,token_dim//4),nn.GELU(),nn.Linear(token_dim//4,token_dim)) for _ in range(4)])
         self.projections=nn.ModuleList([nn.Linear(token_dim,text_dim) for _ in range(4)])
         self.res_heads=nn.ModuleList([nn.Conv2d(2*token_dim,hidden,1) for _ in range(4)])
@@ -115,15 +115,19 @@ class NuisanceHeadV2(nn.Module):
         if text.shape[0]!=self.n_anchors: raise ValueError('Unexpected anchor count')
         n_a=self.n_anchors
         z=[]; semantic=[]
+        if references is None: references=[None]*len(queries)
         for i,(q,ref) in enumerate(zip(queries,references)):
             b,n,d=q.shape
             if n!=self.grid**2: raise ValueError('Unexpected patch grid')
-            bank=ref.reshape(b,-1,d)
-            with torch.no_grad():
-                indices=torch.cat([torch.cdist(part,bank).argmin(-1) for part in q.split(256,dim=1)],dim=1)
-                nearest=bank.gather(1,indices.unsqueeze(-1).expand(-1,-1,d))
             adapted=q+self.visual[i](q)
-            feat=torch.cat((adapted,(adapted-nearest).abs()),dim=-1).transpose(1,2).reshape(b,2*d,self.grid,self.grid)
+            if self.use_residual:
+                bank=ref.reshape(b,-1,d)
+                with torch.no_grad():
+                    indices=torch.cat([torch.cdist(part,bank).argmin(-1) for part in q.split(256,dim=1)],dim=1)
+                    nearest=bank.gather(1,indices.unsqueeze(-1).expand(-1,-1,d))
+                resid=(adapted-nearest).abs()
+            else: resid=torch.zeros_like(adapted)
+            feat=torch.cat((adapted,resid),dim=-1).transpose(1,2).reshape(b,2*d,self.grid,self.grid)
             z.append(F.relu(self.res_heads[i](feat)))
             semantic.append(F.normalize(self.projections[i](adapted),dim=-1) @ F.normalize(text,dim=-1).T / self.temperature)
         combined=torch.stack(z).sum(0)

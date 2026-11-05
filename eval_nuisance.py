@@ -17,7 +17,7 @@ from nuisance_model import NuisanceHead,NuisanceHeadV2
 
 def build(clip,cfg,names,device):
  """Head + anchors for a checkpoint config (v0 or v2 architecture)."""
- if cfg.get('arch','v0')=='v2': return NuisanceHeadV2(n_anchors=len(names),nu_gate=not cfg.get('no_nu_gate',False),gamma_fixed=cfg.get('gamma_fixed',None)).to(device).eval(),AnchorsV2(clip,names,eps=cfg.get('eps',.5)).to(device).eval()
+ if cfg.get('arch','v0')=='v2': return NuisanceHeadV2(n_anchors=len(names),nu_gate=not cfg.get('no_nu_gate',False),gamma_fixed=cfg.get('gamma_fixed',None),use_residual=not cfg.get('no_residual',False)).to(device).eval(),AnchorsV2(clip,names,eps=cfg.get('eps',.5)).to(device).eval()
  return NuisanceHead(n_anchors=len(names)).to(device).eval(),Anchors(clip,names,freeze_nuisance=cfg.get('freeze_nuisance',False)).to(device).eval()
 from tools import get_transform,setup_seed
 
