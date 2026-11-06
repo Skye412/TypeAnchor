@@ -5,7 +5,7 @@ import argparse,csv,json
 from pathlib import Path
 import numpy as np
 from PIL import Image
-from eval_filter import load_exclude,filter_rows
+from eval_filter import load_exclude,filter_rows,union_mask
 ap=argparse.ArgumentParser(); ap.add_argument('runs',nargs='+'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--split',default='val'); a=ap.parse_args()
 data=Path(a.data)/a.split; excl=load_exclude(a.exclude)
 out={}
@@ -14,7 +14,7 @@ for run in a.runs:
  for row in rows:
   s=np.load(r/"maps"/(row["sample"]+".npy")).astype(np.float32)
   if row["label"]=="1":
-   g=np.asarray(Image.open(data/"annotated"/(row["sample"]+".png")).convert("L").resize((518,518),Image.Resampling.BILINEAR))>127
+   g=union_mask(data/"annotated"/(row["sample"]+".png"))
    pos.append(s[g]); neg.append(s[~g])
   else: nm.append(s.ravel())
  pos=np.concatenate(pos); neg=np.concatenate(neg); nm=np.concatenate(nm); res={'n_normal':len(nm)//(518*518),'n_anomaly':len(rows)-len(nm)//(518*518),'exclude':a.exclude}

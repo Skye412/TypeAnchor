@@ -35,14 +35,14 @@ def rank_metrics(y,s):
 
 def main():
  ap=argparse.ArgumentParser(); ap.add_argument('--run',default='runs/nuisance-v0/val-epoch20'); ap.add_argument('--data',default='/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM'); ap.add_argument('--split',default='val'); ap.add_argument('--skip-aupro',action='store_true'); ap.add_argument('--aupro-device',default='cpu'); ap.add_argument('--exclude',default=None); ap.add_argument('--suffix',default=''); a=ap.parse_args()
- from eval_filter import load_exclude,filter_rows
+ from eval_filter import load_exclude,filter_rows,union_mask
  r=Path(a.run); data=Path(a.data)/a.split; rows=filter_rows(list(csv.DictReader((r/'predictions.csv').open())),load_exclude(a.exclude))
  out={'images':len(rows),'split':a.split,'exclude':a.exclude}
  # ---- P-AUPRO on binary maps (same evaluator and resolution as baseline-v1) ----
  if not a.skip_aupro:
   gts=[]; prs=[]
   for row in rows:
-   if row['label']=='1': g=np.asarray(Image.open(data/'annotated'/(row['sample']+'.png')).convert('L').resize((518,518),Image.Resampling.BILINEAR))>127
+   if row['label']=='1': g=union_mask(data/'annotated'/(row['sample']+'.png'))
    else: g=np.zeros((518,518),bool)
    gts.append(torch.from_numpy(g.astype(np.int32))); prs.append(torch.from_numpy(np.load(r/'maps'/(row['sample']+'.npy')).astype(np.float32)))
   device=a.aupro_device
