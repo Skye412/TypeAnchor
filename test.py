@@ -1,5 +1,6 @@
 """Testing script for AdaptCLIP anomaly detection model."""
 
+import os
 import argparse
 import pickle
 import random
@@ -185,7 +186,7 @@ def test(args):
 
 
     # ====================== Initialize Evaluation Metrics ======================
-    cpu_eva = True
+    cpu_eva = os.environ.get('EVAL_DEVICE', 'cpu') == 'cpu'   # EVAL_DEVICE=cuda computes the metrics (incl. P-AUPRO) on the GPU
     if cpu_eva:
         evaluator = Evaluator('cpu', metrics=eval_metrics, sample_level=sample_level)
     else:

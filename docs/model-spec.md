@@ -76,7 +76,7 @@
 - 交替训练（沿用 AdaptCLIP）：奇数 epoch 更新视觉侧（视觉适配器、P_l、H_res、图像头），冻结文本上下文；偶数 epoch 更新文本上下文，冻结视觉侧。共 20 epoch，lr 1e-3，AdamW，batch 8。
 
 ## 6. 可训练参数
-视觉适配器（AdaptCLIP 原：两支残差 MLP）、四个 P_l、H_res、图像头、13 × 12 个上下文 token。合计约 3–4 M，骨干 0。
+视觉适配器（AdaptCLIP 原：两支残差 MLP）、四个 P_l、H_res、图像头、13 × 12 个上下文 token。合计约 3–4 M，骨干 0。（此为 v0.1 设计估计。最终模型 6 锚点 v2 实测 6.59 M：visual 2.10、projections 3.15、res_heads 1.05、seg 0.15、image 0.13、锚点 delta 0.005，见 results.md §2n.2。）
 
 ## 7. 推理流程
 1. 检索 k = 4 参考 → 四层残差 → A_res, a_res。
