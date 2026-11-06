@@ -93,7 +93,7 @@ class NuisanceHeadV2(nn.Module):
     * four independent sigmoid type heads on local similarity (multi-label; overlap allowed), gated by nu;
     * image head pools residual features re-weighted by (0.5 + 0.5 nu) so high-residual nuisance regions are damped.
     """
-    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5, nu_gate=True, gamma_fixed=None, use_residual=True):
+    def __init__(self, token_dim=1024, text_dim=768, grid=37, hidden=128, temperature=.07, sigma=1.5, n_anchors=12, gamma_init=.5, nu_gate=True, gamma_fixed=None, use_residual=True, detail=False, detail_init=-3.):
         """nu_gate=False: ablation without nu gating (image head pools raw residual features; generic = residual; typed not gated).
         gamma_fixed in {0.,1.}: ablation with gamma frozen at pure regional (0) or pure local (1) similarity."""
         super().__init__()
@@ -110,8 +110,19 @@ class NuisanceHeadV2(nn.Module):
         y,x=torch.meshgrid(torch.arange(-2,3),torch.arange(-2,3),indexing='ij')
         kernel=torch.exp(-(x*x+y*y)/(2*sigma*sigma)).float().view(1,1,5,5)
         self.register_buffer('kernel',kernel)
+        # Third scale (detail=True): a shallow conv branch on the image at 1/4 resolution, fused with the upsampled residual
+        # features and read out as cosine similarity to the same text anchors. Per anchor, delta = sigmoid(detail_logit) is the
+        # weight of the detail similarity; the three-scale mix is delta*detail + (1-delta)*(gamma*local + (1-gamma)*regional).
+        # The type heads are then evaluated at 1/4 resolution (130x130 for a 518 input) instead of the 37x37 patch grid.
+        self.detail=detail
+        if detail:
+            gn=lambda c:nn.GroupNorm(8,c)
+            self.detail_stem=nn.Sequential(nn.Conv2d(3,32,3,2,1),gn(32),nn.ReLU(),nn.Conv2d(32,32,3,1,1),gn(32),nn.ReLU(),nn.Conv2d(32,64,3,2,1),gn(64),nn.ReLU(),nn.Conv2d(64,64,3,1,1),gn(64),nn.ReLU())
+            self.detail_fuse=nn.Sequential(nn.Conv2d(64+hidden,96,3,1,1),gn(96),nn.ReLU(),nn.Conv2d(96,96,3,1,1),gn(96),nn.ReLU())
+            self.detail_proj=nn.Conv2d(96,text_dim,1)
+            self.detail_logit=nn.Parameter(torch.full((n_anchors,),float(detail_init)))
 
-    def forward(self,queries,references,text,output_size=518):
+    def forward(self,queries,references,text,output_size=518,image=None):
         if text.shape[0]!=self.n_anchors: raise ValueError('Unexpected anchor count')
         n_a=self.n_anchors
         z=[]; semantic=[]
@@ -150,13 +161,23 @@ class NuisanceHeadV2(nn.Module):
         image_logits=self.image(pooled)
         up=lambda t:F.interpolate(t,size=(output_size,output_size),mode='bilinear',align_corners=False)
         residual=up(res_logits).sigmoid(); nu_up=up(nu); mu_up=up(mu)
-        typed=up(p_type)
+        extra={}
+        if self.detail:
+            if image is None: raise ValueError('detail branch needs the input image')
+            fd=self.detail_stem(image); hw=fd.shape[-2:]
+            fd=self.detail_fuse(torch.cat((fd,F.interpolate(combined,size=hw,mode='bilinear',align_corners=False)),1))
+            s_detail=torch.einsum('bchw,ac->bahw',F.normalize(self.detail_proj(fd),dim=1),F.normalize(text,dim=-1))/self.temperature
+            delta=self.detail_logit.sigmoid().view(1,n_a,1,1)
+            mixed_hr=delta*s_detail+(1-delta)*F.interpolate(mixed,size=hw,mode='bilinear',align_corners=False)
+            p_type_hr=((mixed_hr[:,1:5]-mixed_hr[:,:1])*self.type_scale.view(1,4,1,1)+self.type_bias.view(1,4,1,1)).sigmoid()
+            typed=up(p_type_hr); extra={'p_type_hr':p_type_hr,'typed_coarse':up(p_type)}
+        else: typed=up(p_type)
         if self.nu_gate: typed_gated=typed*nu_up; generic=residual*nu_up
         else: typed_gated=typed; generic=residual
         # 'typed' is the ungated multi-label probability (same meaning as v0's typed = pi_c); 'typed_gated' = typed * nu is the
         # model's own output and feeds the binary map. Evaluation reports typed, typed*residual and typed*nu separately.
         return {'residual':residual,'image_logits':image_logits,'pi':pi,'nu':nu,'mu':mu,'p_type':p_type,'res_weights':weights,
-                'typed':typed,'typed_gated':typed_gated,'nu_up':nu_up,'generic':generic,'binary':torch.maximum(generic,typed_gated.amax(1,keepdim=True)),'nuisance':mu_up}
+                'typed':typed,'typed_gated':typed_gated,'nu_up':nu_up,'generic':generic,'binary':torch.maximum(generic,typed_gated.amax(1,keepdim=True)),'nuisance':mu_up,**extra}
 
 def explanation_loss_v2(pi,masks,res_weights,zs_prob=None,tau_res=.25,tau_conf=.5,beta=.5,use_res=True,res_cap=.3,dropout_probability=.25):
     """Residual-conditioned stratified supervision on the n-way pi [B,n,g,g].

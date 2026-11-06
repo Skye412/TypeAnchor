@@ -17,7 +17,7 @@ from nuisance_model import NuisanceHead,NuisanceHeadV2
 
 def build(clip,cfg,names,device):
  """Head + anchors for a checkpoint config (v0 or v2 architecture)."""
- if cfg.get('arch','v0')=='v2': return NuisanceHeadV2(n_anchors=len(names),nu_gate=not cfg.get('no_nu_gate',False),gamma_fixed=cfg.get('gamma_fixed',None),use_residual=not cfg.get('no_residual',False)).to(device).eval(),AnchorsV2(clip,names,eps=cfg.get('eps',.5)).to(device).eval()
+ if cfg.get('arch','v0')=='v2': return NuisanceHeadV2(n_anchors=len(names),nu_gate=not cfg.get('no_nu_gate',False),gamma_fixed=cfg.get('gamma_fixed',None),use_residual=not cfg.get('no_residual',False),detail=cfg.get('detail',False)).to(device).eval(),AnchorsV2(clip,names,eps=cfg.get('eps',.5)).to(device).eval()
  return NuisanceHead(n_anchors=len(names)).to(device).eval(),Anchors(clip,names,freeze_nuisance=cfg.get('freeze_nuisance',False)).to(device).eval()
 from tools import get_transform,setup_seed
 
@@ -58,7 +58,7 @@ def main():
      ref=trans(Image.open(train.root/normals[idx]['image_path']).convert('RGB')).unsqueeze(0).to(device);_,rf=clip.encode_image(ref,[6,12,18,24],proj_use=False,DPAM_layer=20);cache[idx]=[z[:,1:].half().cpu() for z in rf]
     feats.append(cache[idx])
    refs=[torch.cat([x[l] for x in feats],0).unsqueeze(0).to(device).float() for l in range(4)]
-   result=head(q,refs,text);b=result['binary'][0,0];score=.5*result['image_logits'].softmax(-1)[0,1]+.5*b.flatten().topk(max(1,int(b.numel()*.01))).values.mean()
+   result=head(q,refs,text,image=img) if getattr(head,'detail',False) else head(q,refs,text);b=result['binary'][0,0];score=.5*result['image_logits'].softmax(-1)[0,1]+.5*b.flatten().topk(max(1,int(b.numel()*.01))).values.mean()
    arr=b.cpu().numpy();np.save(out/'maps'/(r['sample']+'.npy'),arr)
    if a.save_typed:
     np.save(out/'typed'/(r['sample']+'.npy'),result['typed'][0].half().cpu().numpy())

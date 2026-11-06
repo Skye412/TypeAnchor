@@ -135,6 +135,8 @@ def main():
  ap.add_argument('--max-steps',type=int,default=0,help='smoke test: stop each epoch after this many steps')
  ap.add_argument('--cache-dir',default=None,help='feature cache root from build_feature_cache.py; skips all CLIP image forwards'); ap.add_argument('--arch',choices=['v0','v2'],default='v0'); ap.add_argument('--eps',type=float,default=.5); ap.add_argument('--tau-res',type=float,default=.25); ap.add_argument('--beta',type=float,default=.5); ap.add_argument('--lambda-ortho',type=float,default=.1); ap.add_argument('--lambda-type',type=float,default=1.); ap.add_argument('--res-warmup',type=int,default=2,help='epochs before the residual condition of the stratified target is enabled'); ap.add_argument('--res-cap',type=float,default=.3)
  ap.add_argument('--no-nu-gate',action='store_true',help='v2 ablation: drop nu gating of image head, generic channel and type heads'); ap.add_argument('--gamma-fixed',type=float,default=None,help='v2 ablation: freeze gamma at 0 (regional) or 1 (local)'); ap.add_argument('--no-residual',action='store_true',help='v2 ablation: zero the reference residual; no references are loaded')
+ ap.add_argument('--detail',action='store_true',help='v2: third (1/4-resolution) scale, a shallow conv branch read out against the text anchors'); ap.add_argument('--init',default=None,help='warm-start head and anchors from this checkpoint (new parameters keep their init)')
+ ap.add_argument('--detail-only',action='store_true',help='with --init: freeze the loaded head and anchors; train only the detail branch, its per-anchor weights and the type-head scale / bias on the type loss'); ap.add_argument('--detail-lr',type=float,default=1e-3); ap.add_argument('--no-detail-jitter',action='store_true',help='disable the photometric jitter of the detail-branch input')
  args=ap.parse_args()
  if args.arch=='v2' and args.bg_target=='loose': args.bg_target='pseudo'   # v2 always uses the stratified target with centered zero-shot
  names=ANCHOR_SETS[args.anchor_set]; config=dict(vars(args),anchors=names)
@@ -142,7 +144,7 @@ def main():
  device='cuda'; clip,_=adaptcliplib.load('ViT-L/14@336px',device=device); clip.visual.DAPM_replace(DPAM_layer=20); clip.eval()
  for p in clip.parameters():p.requires_grad_(False)
  transform,_=get_transform(518); fc=FeatureCache(args.cache_dir,'train',device) if args.cache_dir else None
- train=Bridge(args.data,'train',transform,load_image=fc is None); normal=[r for r in train.rows if r['category']=='normal']
+ train=Bridge(args.data,'train',transform,load_image=fc is None or args.detail); normal=[r for r in train.rows if r['category']=='normal']
  # Cached global vectors for retrieval; only selected training normals enter the bank.
  cache=Path(args.bank) if args.bank else out/'normal_globals.pt'
  if cache.exists(): bank=torch.load(cache,map_location=device,weights_only=True)
@@ -153,8 +155,18 @@ def main():
    with torch.no_grad(): g,_=clip.encode_image(x,[6,12,18,24],proj_use=False,DPAM_layer=20)
    bank.append(F.normalize(g.float(),dim=-1).cpu())
   bank=torch.cat(bank); torch.save(bank,cache); bank=bank.to(device)
- if args.arch=='v2': head=NuisanceHeadV2(n_anchors=len(names),nu_gate=not args.no_nu_gate,gamma_fixed=args.gamma_fixed,use_residual=not args.no_residual).to(device); anchors=AnchorsV2(clip,names,eps=args.eps).to(device)
+ if args.arch=='v2': head=NuisanceHeadV2(n_anchors=len(names),nu_gate=not args.no_nu_gate,gamma_fixed=args.gamma_fixed,use_residual=not args.no_residual,detail=args.detail).to(device); anchors=AnchorsV2(clip,names,eps=args.eps).to(device)
  else: head=NuisanceHead(n_anchors=len(names)).to(device); anchors=Anchors(clip,names,freeze_nuisance=args.freeze_nuisance).to(device)
+ if args.init:
+  ck=torch.load(args.init,map_location='cpu',weights_only=True); missing,unexpected=head.load_state_dict(ck['head'],strict=False); anchors.load_state_dict(ck['anchors'])
+  print('warm start',args.init,'new parameters:',sorted({k.split('.')[0] for k in missing}),'unexpected:',unexpected,flush=True)
+ if args.detail_only:
+  if not (args.detail and args.init): raise SystemExit('--detail-only needs --detail and --init')
+  detail_params=[p for n,p in head.named_parameters() if n.startswith('detail_') or n in ('type_scale','type_bias')]
+  for p in list(head.parameters())+list(anchors.parameters()): p.requires_grad_(False)
+  for p in detail_params: p.requires_grad_(True)
+  detail_opt=torch.optim.AdamW(detail_params,lr=args.detail_lr)
+ print('trainable head parameters: %.3f M, detail branch: %.3f M'%(sum(p.numel() for p in head.parameters() if p.requires_grad)/1e6,sum(p.numel() for n,p in head.named_parameters() if n.startswith('detail_'))/1e6),flush=True)
  with torch.no_grad(): prior=(anchors.hand if args.prior=='hand' else anchors(clip)).detach().clone()
  learn_rows=N_FIXED if (args.freeze_nuisance and len(names)>N_FIXED) else len(names)
  bias=None
@@ -164,7 +176,7 @@ def main():
  weights=torch.tensor([1/(sum(r['category']==c for r in train.rows)) for c in ('normal','annotated')]); sampleweights=torch.tensor([weights[int(r['category']=='annotated')] for r in train.rows]); sampler=WeightedRandomSampler(sampleweights,len(train),replacement=True,generator=torch.Generator().manual_seed(args.seed))
  loader=DataLoader(train,batch_size=1,sampler=sampler,num_workers=4,pin_memory=True)
  for epoch in range(1,args.epochs+1):
-  visual=epoch%2==1; head.train(); anchors.train(); opt=visual_opt if visual else text_opt; opt.zero_grad(set_to_none=True); losses=[]; pseudo_hist=torch.zeros(len(names)); bg_cells=0; strat={'defect_cells':0,'clean_cells':0,'suspicious_cells':0}
+  visual=epoch%2==1 or args.detail_only; head.train(); anchors.train(); opt=detail_opt if args.detail_only else (visual_opt if visual else text_opt); opt.zero_grad(set_to_none=True); losses=[]; pseudo_hist=torch.zeros(len(names)); bg_cells=0; strat={'defect_cells':0,'clean_cells':0,'suspicious_cells':0}
   for step,(img,masks,label,parent,ii) in enumerate(tqdm(loader,desc=f'epoch {epoch}/{args.epochs}')):
    if args.max_steps and step>=args.max_steps: break
    masks=masks.to(device); label=label.to(device); sample=train.rows[int(ii[0])]['sample']
@@ -187,8 +199,14 @@ def main():
      bg,_=pseudo_background(q,clip,anchors.hand,args.pseudo_conf,bias=bias)
      cell_bg=F.adaptive_avg_pool2d(masks.amax(1,keepdim=True),37)[0,0]<.25; pseudo_hist+=torch.bincount(bg[0][cell_bg],minlength=len(names)).cpu(); bg_cells+=int(cell_bg.sum())
    text=anchors(clip) if not visual else anchors(clip).detach()
-   output=head(q,ref,text); union=masks.amax(1,keepdim=True)
-   if args.arch=='v2':
+   dimg=None
+   if args.detail:
+    dimg=img.to(device)
+    if not args.no_detail_jitter: dimg=dimg*(.7+.6*torch.rand(1,3,1,1,device=device))+.4*(torch.rand(1,3,1,1,device=device)-.5)   # photometric only, so the cached CLIP tokens stay valid
+   output=head(q,ref,text,image=dimg); union=masks.amax(1,keepdim=True)
+   if args.detail_only:
+    loss=sum(binary_loss(output['typed'][:,c:c+1],masks[:,c:c+1]) for c in range(4))/4
+   elif args.arch=='v2':
     l_exp,st=explanation_loss_v2(output['pi'],masks,output['res_weights'],zs_prob=zs,tau_res=args.tau_res,tau_conf=args.pseudo_conf,beta=args.beta,use_res=epoch>args.res_warmup,res_cap=args.res_cap)
     for k in strat: strat[k]+=st[k]
     l_type=sum(binary_loss(output['typed'][:,c:c+1],masks[:,c:c+1]) for c in range(4))/4
@@ -202,6 +220,7 @@ def main():
   if args.arch=='v2':
    tot=max(1,sum(strat.values())); stats['strata']={k:round(v/tot,4) for k,v in strat.items()}
    with torch.no_grad(): t=anchors(clip); stats['anchor_cos_to_hand']=[round(float(x),3) for x in F.cosine_similarity(t,anchors.hand,dim=-1)]; stats['gamma']=[round(float(x),3) for x in head.gamma_logit.sigmoid()]
+   if args.detail: stats['delta']=[round(float(x),3) for x in head.detail_logit.sigmoid()]
   torch.save({'epoch':epoch,'head':head.state_dict(),'anchors':anchors.state_dict(),'config':config,'loss':stats['loss']},out/f'epoch_{epoch}.pth')
   with (out/'train_log.jsonl').open('a') as f: f.write(json.dumps(stats)+'\n')
   print(f'epoch {epoch}/{args.epochs} loss={stats["loss"]:.6f} '+json.dumps({k:v for k,v in stats.items() if k not in ('epoch','loss')}),flush=True)
