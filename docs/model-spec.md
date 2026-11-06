@@ -150,10 +150,11 @@ patch 级目标：缺陷格 = 任一类掩码在格内占比 ≥ 0.25。
 ### 10.9 评测真值更正与第三尺度（2026-11-06）
 - 二元像素指标的并集真值：`eval_filter.union_mask`，拍平 RGB 掩码任何非黑像素为正，双线性缩到 518 后 >127。此前 `convert('L') > 127` 漏掉红色（裂缝）与蓝色（锈蚀），2026-11-05 之前本方法与 SegFormer 的二元像素数字全部作废（results.md §2k）。§10.6 的 P-AP 68.1、P-AUPRO 90.3 等为旧值。
 - 滑窗推理 `eval_tiled.py`（放大 2 倍、3×3 个 518 窗口、步长 259、平均后面积下采样；`--blend` 与整图输出混合）。不重训，裂缝 P-AP 35.7 → 42.3，纯滑窗使泛碱 −25（results.md §2m）。
-- 细节支路（`NuisanceHeadV2(detail=True)`，`train_nuisance.py --detail`，试验中）：
+- 细节支路（`NuisanceHeadV2(detail=True)`，`train_nuisance.py --detail`，试验已完成，未采用）：
   - `detail_stem`：4 层 3×3 卷积（3→32→32→64→64，两次步长 2，GroupNorm），输入 518 图像，输出 1/4 分辨率 130×130。
   - `detail_fuse`：与上采样到 130×130 的残差特征（四层 z 之和，128 通道）拼接，2 层 3×3 卷积到 96 通道。
   - `detail_proj`：1×1 卷积到文本维 768，与同一组文本锚点做余弦相似度（温度 0.07），得到细节尺度相似度 s_detail。
   - 三尺度混合：δ_a = sigmoid(detail_logit_a)（逐锚点，初值 0.047），mixed_hr = δ·s_detail + (1 − δ)·up(γ·local + (1 − γ)·regional)。类型头在 130×130 上按原公式读出，再上采样到 518。π、ν、图像头、类无关通道仍在 37×37 上，不变。
   - 新增参数 0.39 M。`--init <ckpt>` 从已训模型热启动；`--detail-only` 冻结原头与锚点，只训细节支路、δ 与类型头的 scale / bias，损失只有类型损失；默认对细节支路输入做亮度 / 对比度抖动（只改光度，缓存的 CLIP token 仍然有效）。
-  - 队列 `scripts/queue_detail.sh`：runs/v2-detail（只训支路，12 epoch）与 runs/v2-detail-joint（联合微调，10 epoch），各评测 CODEBRIM 验证集、S2DS test、dacl10k。结果待出。
+  - 队列 `scripts/queue_detail.sh`：runs/v2-detail（只训支路，12 epoch）与 runs/v2-detail-joint（联合微调，10 epoch），各评测 CODEBRIM 验证集、S2DS test、dacl10k。
+  - 结果（results.md §2n）：只训支路裂缝 P-AP 35.7 → 42.4，联合微调 37.8，均低于止损线 44；裂缝增益不迁移到外部数据集，学到的 δ 很小（裂缝锚点 0.06）。细节支路不进最终模型，代码保留，`detail=False` 为默认。
