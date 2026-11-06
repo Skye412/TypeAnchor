@@ -138,11 +138,22 @@ patch 级目标：缺陷格 = 任一类掩码在格内占比 ≥ 0.25。
 - 锚点 T_0 正常、T_1..T_4 缺陷类型、T_5 类无关缺陷，无干扰锚点。π ∈ Δ^6，ν = Σ_{a=1..5} π_a，μ ≡ 0。
 - L_exp 退化为：缺陷格 −log ν + 组内交叉熵（含类型 dropout）；全部背景格 −log π_0。零样本伪标签、残差分层、L_ortho 不再参与。
 - 其余结构、损失、训练设置与 §10.1–10.5 相同。训练命令：`bash scripts/train_ablation.sh no-nuisance <out> --arch v2 --cache-dir <cache>`。
-- 3 种子验证集结果：原集 I-AUROC 92.3 ± 0.3、P-AP 68.3 ± 1.3、P-AUPRO 89.8 ± 0.2、mAP 71.1 ± 1.1、裂缝 P-AP 33.4 ± 2.4；Cleaned-Val 94.6 / 78.2 / 92.2 / 77.5 / 34.5。方差明显小于 12 锚点版。
+- 3 种子验证集结果（二元像素数字按 results.md §2k 的修正真值重算）：原集 I-AUROC 92.3、P-AP 79.9（78.7 至 81.8）、P-AUPRO 79.1（77.4 至 81.2）、mAP 71.1、裂缝 P-AP 33.4；Cleaned-Val 94.6 / 90.7 / 84.2 / 77.5 / 34.5。方差明显小于 12 锚点版。
 - 消融开关：`--no-nu-gate`（图像头池化不加权、A_cls = A_res、类型头不乘 ν、A_bin = max(A_res, max_c typed_c)）；`--gamma-fixed 0|1`（γ 冻结为纯区域 / 纯局部）。
 - 跨数据集评估：`eval_nuisance.py --data <S2DS_all> --split all`，参考库与检索仍用 CODEBRIM 训练正常图的缓存全局嵌入；按类 GT 从拍平 RGB 掩码按调色板解码（红 = 裂缝、蓝 = 锈蚀、绿 = 剥落、黄 = 泛碱，已与独立掩码核对）。
 
 ### 10.8 定位更正与待定结构（2026-11-05）
-- 参考的作用（results.md §2h、§2i）：域内 1 张随机参考与检索 top-4 结果相同，所以 §2 的 M1（正常库检索）没有增益；但残差项 |adapted − nearest| 不是惰性的，`--no-residual`（残差输入置零，训练与推理都不加载参考，runs/abl-v2-no-residual）使二元图 P-AP 70.1 → 60.6、泛碱 P-AP 85.2 → 73.0、Cleaned-Val 正常图被标面积 @TPR0.8 0.12% → 0.98%，类型头的裂缝 / 锈蚀 / 剥落基本不变。此前"最终模型不使用参考"的写法更正为"需要残差信号，对参考的选择与数量不敏感"。
+- 参考的作用（results.md §2h、§2i）：域内 1 张随机参考与检索 top-4 结果相同，所以 §2 的 M1（正常库检索）没有增益；但残差项 |adapted − nearest| 不是惰性的，`--no-residual`（残差输入置零，训练与推理都不加载参考，runs/abl-v2-no-residual）使二元图 P-AP 81.8 → 72.1、泛碱 P-AP 85.2 → 73.0、Cleaned-Val 正常图被标面积 @TPR0.8 0.12% → 0.93%，类型头的裂缝 / 锈蚀 / 剥落基本不变。此前"最终模型不使用参考"的写法更正为"需要残差信号，对参考的选择与数量不敏感"。
 - 最终结构因此**保留残差分支，去掉检索**：推理时给 1 张任意正常混凝土图即可（`eval_nuisance.py --ref-subset 1`），不需要正常库、全局嵌入 bank 与 top-k 检索；训练仍可沿用现有检索流程（等价）。方法按"冻结 CLIP 上的文本锚点引导有监督多标签分割头，带单张正常参考的残差通道"定位。
-- 全监督对照：`train_segformer.py`（SegFormer-B2，MiT-B2 ImageNet 预训练，约 25 M 参数全部可训练，同数据同掩码，多标签 sigmoid，BCE + Dice，40 epoch）。输出布局与本方法一致，指标脚本通用。结果见 results.md §2j：域内按类分割 SegFormer 更强，S2DS 零样本迁移本方法更稳。
+- 全监督对照：`train_segformer.py`（SegFormer-B2，MiT-B2 ImageNet 预训练，约 25 M 参数全部可训练，同数据同掩码，多标签 sigmoid，BCE + Dice，40 epoch）。输出布局与本方法一致，指标脚本通用。结果见 results.md §2j：域内像素级与按类分割 SegFormer 更强，S2DS 与 dacl10k（§2l）上按类分割与图像级本方法更好。
+
+### 10.9 评测真值更正与第三尺度（2026-11-06）
+- 二元像素指标的并集真值：`eval_filter.union_mask`，拍平 RGB 掩码任何非黑像素为正，双线性缩到 518 后 >127。此前 `convert('L') > 127` 漏掉红色（裂缝）与蓝色（锈蚀），2026-11-05 之前本方法与 SegFormer 的二元像素数字全部作废（results.md §2k）。§10.6 的 P-AP 68.1、P-AUPRO 90.3 等为旧值。
+- 滑窗推理 `eval_tiled.py`（放大 2 倍、3×3 个 518 窗口、步长 259、平均后面积下采样；`--blend` 与整图输出混合）。不重训，裂缝 P-AP 35.7 → 42.3，纯滑窗使泛碱 −25（results.md §2m）。
+- 细节支路（`NuisanceHeadV2(detail=True)`，`train_nuisance.py --detail`，试验中）：
+  - `detail_stem`：4 层 3×3 卷积（3→32→32→64→64，两次步长 2，GroupNorm），输入 518 图像，输出 1/4 分辨率 130×130。
+  - `detail_fuse`：与上采样到 130×130 的残差特征（四层 z 之和，128 通道）拼接，2 层 3×3 卷积到 96 通道。
+  - `detail_proj`：1×1 卷积到文本维 768，与同一组文本锚点做余弦相似度（温度 0.07），得到细节尺度相似度 s_detail。
+  - 三尺度混合：δ_a = sigmoid(detail_logit_a)（逐锚点，初值 0.047），mixed_hr = δ·s_detail + (1 − δ)·up(γ·local + (1 − γ)·regional)。类型头在 130×130 上按原公式读出，再上采样到 518。π、ν、图像头、类无关通道仍在 37×37 上，不变。
+  - 新增参数 0.39 M。`--init <ckpt>` 从已训模型热启动；`--detail-only` 冻结原头与锚点，只训细节支路、δ 与类型头的 scale / bias，损失只有类型损失；默认对细节支路输入做亮度 / 对比度抖动（只改光度，缓存的 CLIP token 仍然有效）。
+  - 队列 `scripts/queue_detail.sh`：runs/v2-detail（只训支路，12 epoch）与 runs/v2-detail-joint（联合微调，10 epoch），各评测 CODEBRIM 验证集、S2DS test、dacl10k。结果待出。
