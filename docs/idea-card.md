@@ -36,6 +36,7 @@
 - 裂缝对策：不重训的滑窗推理使裂缝 P-AP 35.7 → 42.3，但纯滑窗使泛碱 −25（§2m），说明尺度需求按类别不同。据此试验了把 1/4 分辨率细节支路作为第三尺度、逐锚点学混合权重（§2n）：只训支路裂缝 42.4，联合微调 37.8，都没过 44 的止损线，增益不迁移到 S2DS / dacl10k，学到的细节权重很小。细节支路不进最终模型，与滑窗一起作为"分辨率是裂缝瓶颈之一，但补上后仍差 SegFormer 12 个点"的分析实验。
 - **与 CLIP 系方法的对比（2026-11-06，results.md §2o）改变了跨域卖点**：域内本方法在二元 P-AP（81.8，对 Bayes-PFL 62.4、MultiADS 56.6、AnomalyCLIP 30.7）和按类指标（mAP 72.6 对 MultiADS 64.6）上最好；但跨数据集上 MultiADS（3.1 M 线性投影 + 多类型提示）的按类分割与 P-AUPRO 都高于本方法（S2DS mAP 52.8 对 46.6，dacl10k 18.5 对 16.1，裂缝两处都高 6 到 7 点）。"跨数据集优于 SegFormer-B2"仍成立，但不能再说成本方法特有的优势。上面第 35 行的卖点表述待按此重写：可主张的只剩域内精度（对所有 CLIP 系方法）与按类输出；跨域只能说"与 MultiADS 同属冻结 CLIP 路线，优于全监督分割，但不如 MultiADS"。
 - 用户决定不再补种子；SegFormer 为单种子。
+- **主表切到 CODEBRIM test 划分后（2026-11-08，results.md §2p）上面的域内数字作废**：test 809 张以大面积缺陷为主，AdaptCLIP 基线二元 P-AP 从 61.8 升到 73.3，本方法 3 种子均值 76.8 ± 3.1，优势只剩 +3.5，I-AUROC 基线还高 0.7；与 SegFormer-B2 二元持平（76.4），按类 mAP 59.4 对 60.1，裂缝 10.3 对 24.1；对 MultiADS P-AP +7、mAP +3.2；P-AUPRO 73.5 低于基线 80.4、MultiADS 78.8 与 WPFormer 78.0。ν 门控在 test 上无可测效果。本方法在 test 上最清楚的优势是匹配召回下的正常图误报面积（TPR 0.9 时 4.4% 对基线 9.5%、SegFormer 10.0%、MultiADS 12.0%）与可重叠的按类输出。全监督二元方法 WPFormer 域内 P-AP 94.6（验证集）/ 70.8（test），跨域 P-AP 低于本方法与 MultiADS。定位改写见 paper-story.md 2026-11-08。
 
 **目标投稿**：Automation in Construction（主）；ICME 2027、CSCWD 2027（会议备选）。标题与摘要不再使用 anomaly detection / nuisance-aware 作为方法定位词。
 

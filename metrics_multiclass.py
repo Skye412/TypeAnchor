@@ -46,7 +46,16 @@ def main():
    else: g=np.zeros((518,518),bool)
    gts.append(torch.from_numpy(g.astype(np.int32))); prs.append(torch.from_numpy(np.load(r/'maps'/(row['sample']+'.npy')).astype(np.float32)))
   device=a.aupro_device
-  aupro=AUPRO().to(device); out['P-AUPRO']=float(aupro(torch.stack(prs).to(device),torch.stack(gts).to(device)).item())
+  if device=='hybrid':   # connected components on the GPU exactly as --aupro-device cuda, ROC/PRO accumulation on the CPU: the 809-tile test split does not fit the 16 GB GPU
+   from torchmetrics.utilities.compute import auc; import metrics.aupro as _A
+   _roc=_A.binary_roc
+   def _roc_gpu(preds,target,thresholds=None):   # each ROC call runs on the GPU as in the cuda path, inputs/outputs live on the CPU between calls
+    r=_roc(preds=preds.cuda(non_blocking=False),target=target.cuda(),thresholds=thresholds); r=tuple(t.cpu() for t in r); torch.cuda.empty_cache(); return r
+   _A.binary_roc=_roc_gpu
+   gt=torch.stack(gts); pr=torch.stack(prs); m=AUPRO().to('cuda'); m.target=[gt.cuda()]; cca=m.perform_cca().flatten().cpu(); del m; torch.cuda.empty_cache()
+   fpr,tpr=AUPRO().compute_pro(cca=cca,target=gt.flatten(),preds=pr.flatten()); out['P-AUPRO']=float((auc(fpr,tpr,reorder=True)/fpr[-1]).item()); del gt,pr,cca,fpr,tpr; _A.binary_roc=_roc
+  else:
+   aupro=AUPRO().to(device); out['P-AUPRO']=float(aupro(torch.stack(prs).to(device),torch.stack(gts).to(device)).item())
   out['P-AUPRO_note']='metrics.AUPRO fpr_limit=0.3 at 518, union GT bilinear>127, identical to the baseline-v1 evaluator'
   del gts,prs; torch.cuda.empty_cache(); print('P-AUPRO',out['P-AUPRO'],flush=True)
  # ---- per-class multi-label metrics on typed maps ----

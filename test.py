@@ -333,6 +333,14 @@ def test(args):
     # ====================== Evaluation ======================
     results_eval = dict(sample_ids=sample_ids, gt_masks=gt_masks, pr_masks=pr_masks, cls_names=cls_names, gt_anomalys=gt_anomalys, pr_anomalys=pr_anomalys, query_paths=query_paths)
     results_eval = {k: np.concatenate(v, axis=0) if k in ['cls_names', 'query_paths', 'sample_ids']  else torch.cat(v, dim=0) for k, v in results_eval.items()}
+    if os.environ.get('SAVE_MAPS'):   # maps/<sample>.npy + predictions.csv as written by eval_nuisance.py, so metrics_nuisance.py / metrics_multiclass.py apply (large splits)
+        import csv as _csv
+        os.makedirs(os.path.join(save_path, 'maps'), exist_ok=True)
+        with open(os.path.join(save_path, 'predictions.csv'), 'w', newline='') as _f:
+            _w = _csv.writer(_f); _w.writerow(['sample', 'label', 'score'])
+            for _s, _m, _l, _p in zip(results_eval['sample_ids'], results_eval['pr_masks'], results_eval['gt_anomalys'], results_eval['pr_anomalys']):
+                np.save(os.path.join(save_path, 'maps', str(_s) + '.npy'), _m.float().cpu().numpy().astype(np.float32)); _w.writerow([str(_s), int(_l), float(_p)])
+        logger.info('SAVE_MAPS: wrote %d maps to %s' % (len(results_eval['sample_ids']), save_path))
 
 
     # save results

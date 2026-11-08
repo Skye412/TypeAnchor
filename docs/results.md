@@ -585,25 +585,35 @@ CODEBRIM 验证集（原集 400 / Cleaned-Val 379）：
 - **AnomalyCLIP**（ICLR 2024）、**Bayes-PFL**（CVPR 2025）：检查点来自早先的 visualad 项目（/home/skye/data/Skye/visualad/outputs/comp_{anomalyclip,bayespfl}_CODEBRIM/best_model.pth，2026-10-20，种子 111 / 333，按验证集选轮）。`eval_external_anomalyclip.py`、`eval_external_bayespfl.py` 按原脚本的推理流程出图，队列 `scripts/queue_external.sh`。验证集数字与其训练日志吻合。那份项目报告里的数字是 test 划分（809 张）加另一套评测代码，不与本表并列。两者无按类输出。
 - **MultiADS**（ICCV 2025）：服务器上无现成结果，官方仓库克隆到 third_party/MultiADS（90e4ebf）。`multiads_bridge.py` 照官方 train.py / test.py：冻结 open_clip ViT-L-14-336，四层线性投影（3.15 M），文本为"正常 + 裂缝 / 锈蚀 / 剥落 / 泛碱"五类提示集成（缺陷短语为本项目按官方写法所写），像素 softmax 温度 0.01，focal + dice，batch 4，10 epoch 取最后一轮，种子 42；单标签目标取拍平 RGB 掩码。**与官方的一处偏离**：官方学习率 1e-3 在本数据上第 2 轮起退化为全判正常（损失停在 0.7389，P-AUROC 34，日志在 runs/ext-multiads-lr1e-3-collapsed），改用 1e-4 后正常收敛。图像分数按官方做法只用全局特征与文本的零样本相似度，不含可训练参数。队列 `scripts/queue_multiads.sh`，结果在 runs/ext-multiads。
 
-二元检测与定位（验证集为原集 / Cleaned-Val）：
+- **WPFormer**（CVPR 2025，26.1 M，PVT-v2-b2）、**MixerCSeg**（CVPR 2026，2.5 M，VMamba）（2026-11-08 补入）：全监督二元缺陷分割，检查点来自 visualad 项目（/home/skye/data/Skye/visualad/outputs/comp_{wpformer,mixercseg}_CODEBRIM/best_model.pth；官方代码，同一 CODEBRIM 训练集，并集掩码，WPFormer 60 epoch AdamW 8e-5 种子 111，MixerCSeg 50 epoch AdamW 5e-4 种子 42，按验证集选轮）。`eval_external_seg.py` 以各自的归一化在 512 输入推理，sigmoid 后双线性到 518，不平滑，图像分数取前 1% 像素均值（与 SegFormer-B2 相同）；MixerCSeg 的 VMamba 核不接受半精度，用 fp32 推理。队列 `scripts/queue_external_seg.sh`，结果在 runs/ext-wpformer、runs/ext-mixercseg。两者无按类输出。MixerCSeg 的域内数字（验证集 P-AP 58.1）明显低于同数据的 WPFormer 与 SegFormer-B2，这份检查点的训练质量未核查，表中照录。两份检查点都是在验证集上按 15 / 13 个评估点取"I-AUROC + P-AUROC + P-F1 + P-AP 均值最高"的那一轮（run_comp_*.py），验证集数字因此偏乐观：WPFormer 验证集 P-AP 94.6、test 70.8，跌幅 24 点，比任何其他方法大（SegFormer-B2 固定第 40 轮：88.1 → 76.4；本方法固定第 20 轮：81.8 → 76.3）。test 划分的数字（§2p）才是两者可比的口径。
+
+二元检测与定位（验证集为原集 / Cleaned-Val；WPFormer、MixerCSeg 为 2026-11-08 补入）：
 
 | 数据集 | 方法 | 可训练参数 | I-AUROC | P-AUROC | 二元 P-AP | P-F1max | P-AUPRO |
 |---|---|---|---|---|---|---|---|
 | CODEBRIM 验证集 | AnomalyCLIP | 5.6 M | 80.1 / 83.5 | 89.7 / 92.1 | 30.7 / 47.5 | 40.1 / 48.2 | 65.3 / 72.6 |
-| | Bayes-PFL | 27.4 M | **92.1** / 94.1 | 96.3 / 97.3 | 62.4 / 74.3 | 61.9 / 68.7 | 72.2 / 76.1 |
+| | Bayes-PFL | 27.4 M | 92.1 / 94.1 | 96.3 / 97.3 | 62.4 / 74.3 | 61.9 / 68.7 | 72.2 / 76.1 |
 | | MultiADS | 3.1 M | 74.5 / 76.6 | 94.1 / 95.7 | 56.6 / 71.7 | 56.0 / 66.8 | 78.1 / 81.8 |
-| | AdaptCLIP 基线 | 1.8 M | 91.3 / — | 96.9 / — | 61.8 / — | 67.3 / — | **81.4** / — |
-| | 最终模型 | 6.6 M | **92.1 / 94.3** | **98.6 / 99.2** | **81.8 / 89.9** | **74.7 / 82.1** | 78.8 / **83.1** |
+| | AdaptCLIP 基线 | 1.8 M | 91.3 / — | 96.9 / — | 61.8 / — | 67.3 / — | 81.4 / — |
+| | 最终模型 | 6.6 M | 92.1 / 94.3 | 98.6 / 99.2 | 81.8 / 89.9 | 74.7 / 82.1 | 78.8 / 83.1 |
+| | WPFormer（全监督二元） | 26.1 M | **94.3 / 94.9** | **99.5 / 99.6** | **94.6 / 95.5** | **88.5 / 90.1** | **88.5 / 90.0** |
+| | MixerCSeg（全监督二元） | 2.5 M | 70.5 / 72.3 | 94.9 / 95.8 | 58.1 / 66.5 | 62.1 / 68.2 | 55.1 / 58.8 |
 | S2DS test | AnomalyCLIP | | 71.9 | 91.6 | 53.0 | 55.9 | 55.1 |
 | | Bayes-PFL | | **85.1** | 92.1 | 56.3 | 56.6 | 50.9 |
 | | MultiADS | | 76.2 | **96.1** | **71.5** | **72.3** | 61.4 |
-| | AdaptCLIP 基线 | | 81.3 | 93.7 | 62.9 | 64.0 | **63.7** |
+| | AdaptCLIP 基线 | | 81.3 | 93.7 | 62.9 | 64.0 | 63.7 |
 | | 最终模型 | | 78.1 | 95.4 | 70.9 | 71.1 | 41.5 |
+| | WPFormer | | 84.6 | 90.2 | 64.4 | 61.4 | **64.2** |
+| | MixerCSeg | | 60.0 | 88.8 | 45.6 | 54.6 | 24.2 |
 | dacl10k | AnomalyCLIP | | 53.4 | 80.4 | 26.1 | 32.5 | 52.1 |
 | | Bayes-PFL | | **69.9** | 79.4 | 31.5 | 37.6 | 50.9 |
 | | MultiADS | | 67.4 | 81.5 | 36.2 | 39.7 | 49.6 |
 | | AdaptCLIP 基线 | | 67.3 | **84.0** | **40.6** | **43.5** | **54.7** |
 | | 最终模型 | | 69.8 | 80.6 | 32.8 | 36.1 | 40.1 |
+| | WPFormer | | 67.4 | 74.2 | 28.4 | 32.2 | 37.6 |
+| | MixerCSeg | | 45.5 | 59.0 | 8.6 | 14.9 | 18.8 |
+
+WPFormer 的加入不改变下面的解读，只补一条：全监督二元分割在域内比本方法高 13 点 P-AP、10 点 P-AUPRO，跨数据集 P-AP 低于本方法与 MultiADS（S2DS 64.4 对 70.9 / 71.5，dacl10k 28.4 对 32.8 / 36.2），但 S2DS 上 P-AUPRO 是全部方法里最高的（64.2），图像级也高于本方法（84.6 对 78.1）。"冻结 CLIP 方法跨域优于全监督分割"在 P-AP 与按类 mAP 上成立，在 P-AUPRO 与图像级上不成立。
 
 按类分割（typed 变体；只有 MultiADS、SegFormer-B2 与本方法有按类输出）：
 
@@ -629,6 +639,70 @@ CODEBRIM 验证集（原集 400 / Cleaned-Val 379）：
 - P-AUPRO：本方法在两个外部集上是五个方法里最低的。
 - 局限：全部单种子；MultiADS 的学习率偏离官方设置、提示短语为本项目所写、无选轮；AnomalyCLIP 与 Bayes-PFL 的种子和选轮方式与本方法不同。§2n.1 显示跨域指标随训练长度摆动 2 至 5 点，MultiADS 在 S2DS mAP、两个外部集的 P-AUPRO 与裂缝上的优势超过这个幅度，dacl10k mAP 的差距（2.4）在摆动范围内。
 
+## 2p. 主表切换到 CODEBRIM test 划分（809 张，2026-11-08，scripts/queue_testsplit.sh、scripts/queue_testsplit_rerun.sh）
+
+此前全部域内数字都在验证集（400 张）上，而验证集同时用于选轮、选 6 锚点设计与 Cleaned-Val 审计。test 划分（809 张：254 张标注 / 555 张正常）在本项目里从未被看过，所有检查点按开发期在验证集上的选择原样推理一次。正常集未做标签审计，所以 test 上没有 Cleaned-Val；Cleaned-Val 留在验证集作标签噪声分析。
+
+**协议与实现变动**
+- P-AUPRO：809 张的 GPU 实现排序时显存溢出（16 GB），metrics_multiclass.py 新增 `--aupro-device hybrid`：连通域仍用 GPU 实现，每次 ROC 调用临时搬到 GPU、数据驻留 CPU；在 WPFormer 验证集上与 `cuda` 得到完全相同的值（0.8849468）。test 的所有 P-AUPRO 都是这个口径，与 §2n.3 / §2o 的 GPU 口径可比。
+- AdaptCLIP 基线：test.py 新增 `SAVE_MAPS=1` 落盘预测图与图像分数（eval_nuisance.py 的目录格式），图像与像素指标由其自带 Evaluator 在 CPU 上算（I-/P-AUROC、AP、F1max 不依赖设备），P-AUPRO 用上面的 hybrid 路径。
+- 其余方法：推理脚本不变，指标脚本同 §2k / §2o。compare_fp.py 的 `--split test`。
+
+**两个划分的缺陷分布不同**（manifest 统计）：验证集 123 张标注图里裂缝 48 / 剥落 22 / 锈蚀 33 / 泛碱 34 张，每张标注图缺陷像素中位数 6,297；test 254 张里裂缝 74 / 剥落 96 / 锈蚀 62 / 泛碱 85 张，中位数 44,114。test 以大面积缺陷（剥落、泛碱）为主，验证集以小面积缺陷为主。像素 P-AP 对大面积缺陷更宽容，这是下面基线数字上升的直接原因。
+
+### 2p.1 二元检测与定位（test 809 张）
+
+| 方法 | 可训练参数 | I-AUROC | I-AP | P-AUROC | 二元 P-AP | P-F1max | P-AUPRO | 正常图被标面积 @TPR0.8 / 0.9 |
+|---|---|---|---|---|---|---|---|---|
+| AnomalyCLIP | 5.6 M | 82.3 | 68.9 | 92.0 | 57.0 | 54.9 | 71.0 | 11.29% / 18.42% |
+| Bayes-PFL | 27.4 M | 91.6 | 84.9 | 93.2 | 62.7 | 58.3 | 75.6 | 8.64% / 16.14% |
+| MultiADS | 3.1 M | 72.3 | 55.1 | 93.7 | 69.8 | 64.9 | 78.8 | 6.51% / 12.04% |
+| AdaptCLIP 基线 | 1.8 M | **92.7** | 86.3 | 95.5 | 73.3 | 68.0 | **80.4** | 4.57% / 9.54% |
+| SegFormer-B2（全监督） | 25 M | 90.2 | 84.4 | 94.7 | 76.4 | 71.5 | 68.6 | 2.43% / 10.01% |
+| WPFormer（全监督二元） | 26.1 M | 88.8 | 80.3 | 91.0 | 70.8 | 67.1 | 78.0 | 11.12% / 27.67% |
+| MixerCSeg（全监督二元） | 2.5 M | 77.6 | 63.5 | 90.7 | 52.1 | 57.0 | 60.7 | 9.63% / 18.31% |
+| 最终模型 s10 | 6.6 M | 91.4 | 86.4 | 96.2 | 76.3 | 67.6 | 70.1 | 2.39% / 4.33% |
+| 最终模型 s11 | | 92.7 | **87.5** | **96.8** | **80.1** | **73.0** | 73.2 | **2.01% / 4.63%** |
+| 最终模型 s12 | | 92.0 | 86.8 | 95.9 | 73.9 | 64.5 | 77.3 | 3.14% / 4.42% |
+| 最终模型 3 种子均值 ± 标准差 | | 92.0 ± 0.7 | 86.9 ± 0.6 | 96.3 ± 0.5 | 76.8 ± 3.1 | 68.4 ± 4.3 | 73.5 ± 3.6 | 2.51% / 4.46% |
+
+### 2p.2 按类分割（test，typed / gated 变体，mIoU 为逐类最佳阈值）
+
+| 方法 | mAP typed / gated | mIoU_best typed / gated | 裂缝 | 锈蚀 | 剥落 | 泛碱 |
+|---|---|---|---|---|---|---|
+| MultiADS | 56.2 / 56.5 | 40.2 / 40.9 | 15.2 / 17.6 | 79.9 / 80.2 | 71.0 / 74.7 | 58.7 / 53.4 |
+| SegFormer-B2 | **60.1** / 60.1 | **50.4** / 50.1 | **24.1** / 24.0 | 81.8 / 81.9 | 76.1 / 76.2 | 58.5 / 58.5 |
+| 最终模型 s10 | 58.7 / 58.4 | 40.7 / 39.6 | 8.3 / 10.7 | 80.2 / 80.4 | 75.0 / 73.4 | 71.4 / 69.3 |
+| 最终模型 s11 | 59.9 / 61.2 | 41.2 / 41.2 | 9.3 / 12.7 | 78.3 / 79.0 | **76.8** / 77.9 | **75.3** / 75.1 |
+| 最终模型 s12 | 59.5 / 59.7 | 40.2 / 39.6 | 13.3 / 19.2 | **83.8** / 84.1 | 76.1 / 75.1 | 64.9 / 60.5 |
+| 最终模型 3 种子均值 | 59.4 / 59.8 | 40.7 / 40.1 | 10.3 / 14.2 | 80.8 / 81.2 | 76.0 / 75.5 | 70.5 / 68.3 |
+
+逐类 P-AP 为 typed / gated。test 上裂缝只有 356 k 像素（占缺陷像素 1.8%），所有方法的裂缝 P-AP 都远低于验证集（本方法 35.7 → 10.3，SegFormer 54.5 → 24.1，MultiADS 33.7 → 15.2）。
+
+### 2p.3 组件消融（test，seed 10；对照 §2f 的验证集数字）
+
+| 运行 | I-AUROC | 二元 P-AP | P-AUPRO | mAP typed / gated | 裂缝 typed / gated | 正常图被标面积 @TPR0.8 |
+|---|---|---|---|---|---|---|
+| 完整（6 锚点 v2） | 91.4 | 76.3 | 70.1 | 58.7 / 58.4 | 8.3 / 10.7 | 2.39% |
+| 去 ν 门控 | 91.8 | 76.2 | 71.8 | 59.7 / 58.7 | 10.2 / 15.5 | 2.96% |
+| γ = 0（纯区域） | 90.0 | 74.4 | 69.9 | 57.3 / 57.2 | 5.2 / 7.7 | 2.53% |
+| γ = 1（纯局部） | 90.6 | 75.0 | 72.0 | 59.4 / 49.0 | 11.0 / 11.8 | 2.26% |
+| 去残差 | 89.7 | 73.2 | 71.2 | 57.2 / 54.4 | 7.5 / 9.6 | 2.87% |
+| 12 锚点 v2 | 91.0 | 72.1 | 73.5 | 56.9 / 55.6 | 9.2 / 12.0 | 2.83% |
+| v0（13 路 softmax） | 88.6 | 71.4 | 65.6 | 48.6 / 50.7 | 1.9 / 9.7 | 5.98% |
+
+### 2p.4 解读（相对验证集的变化）
+
+- **对 AdaptCLIP 基线的域内优势从 +20 缩到 +3.5 P-AP**（3 种子均值 76.8 对 73.3），I-AUROC 基线反而高 0.7（92.7 对 92.0 ± 0.7）。基线在验证集 61.8、test 73.3，本方法 81.8 → 76.8：验证集的小面积缺陷放大了两者的差距。+20 不再是可写的数字。
+- **与 SegFormer-B2 的域内二元差距消失**（76.8 对 76.4，P-F1max 68.4 对 71.5），按类 mAP 59.4 对 60.1、裂缝 10.3 对 24.1、mIoU 40.7 对 50.4：SegFormer 仍在按类与裂缝上更好，二元图上持平。
+- **对 CLIP 系方法仍最好但差距变小**：P-AP 对 Bayes-PFL +14、MultiADS +7、AnomalyCLIP +20；按类 mAP 对 MultiADS +3.2（本方法 3 种子跨度 1.2，MultiADS 单种子）。
+- **P-AUPRO 本方法 73.5 ± 3.6，低于 AdaptCLIP 基线 80.4（全部方法最高）、MultiADS 78.8、WPFormer 78.0、Bayes-PFL 75.6**，高于 SegFormer 68.6。与验证集一样（§2n.3），基线的 P-AUPRO 高于本方法。
+- **匹配召回下的正常图误报面积是本方法最清楚的优势**：TPR 0.9 时本方法 4.3% 至 4.6%，基线 9.5%，SegFormer 10.0%，MultiADS 12.0%，WPFormer 27.7%；TPR 0.8 时与 SegFormer 持平（2.5% 对 2.4%），其余方法 4.6% 至 11.3%。这一项在验证集上也成立（§2k），且不受大面积缺陷影响。
+- **消融在 test 上幅度收缩**：种子标准差 P-AP 3.1、P-AUPRO 3.6，单种子消融里只有 γ = 0 伤裂缝（8.3 → 5.2）、v0 裂缝 1.9 与误报 5.98% 超出种子范围。去 ν 门控在 test 上没有可测的损失（I-AUROC +0.4，P-AP −0.1），§2f 的 −1.1 / −2.8 不再能作为"ν 门控有用"的证据。去残差 P-AP −3.1、误报 2.87% 对 2.39%（验证集约 8 倍，test 1.2 倍）。γ = 1 的 gated mAP 掉 9.4（残差加权区域相似度被去掉后 gated 变体失效），typed 不变。
+- 跨数据集的数字（§2g、§2l、§2o）不受这次切换影响，仍是：冻结 CLIP 路线在 P-AP 与按类 mAP 上优于全监督分割，本方法不如 MultiADS。
+
+**对故事线的影响**：paper-story.md 的"域内 +20"与"ν 门控有用"两条主张撤回；可写的域内主张改为"二元像素精度与全监督分割持平、与 AdaptCLIP 基线相近，按类输出与匹配召回下的低误报是本方法区别于二元方法的地方"。见 paper-story.md 2026-11-08 的改写。
+
 ## 3. 前提检验：统计擦除充分性（已完成，见 audit-design.md）
 
 DINOv2 与 CLIP 骨干上，IDEAL 式 NVE 擦除（α=0.8）使正常图被标面积仅变化 −2.9% / −1.8%，完全投影（α=0）反而上升；预注册判定"统计擦除不足，主路线成立"。
@@ -642,13 +716,15 @@ DINOv2 与 CLIP 骨干上，IDEAL 式 NVE 擦除（α=0.8）使正常图被标�
 - 裂缝对策二（细节支路）已完成，未过止损线，不进最终模型（§2n）。AUPRO 的 GPU / CPU 对照已完成，两种实现差 4.8（§2n）。
 - 与 AnomalyCLIP、Bayes-PFL、MultiADS 的对比已完成（§2o）：域内本方法最好，跨数据集不如 MultiADS，卖点需要重写。
 - "不带细节支路多训 10 epoch"对照已完成（§2n.1）；可训练参数量更正为 6.59 M（§2n.2）。
+- 2026-11-08：WPFormer、MixerCSeg 按本仓库口径重评并补进 §2o；全部方法在 CODEBRIM test 划分（809 张）上重评，主表切到 test（§2p）。对基线的域内优势从 +20 缩到 +3.5，ν 门控在 test 上无可测效果，故事线已按 §2p.4 改写（paper-story.md）。基线 test 的 P-AUPRO 80.4 已补。
 
 ## 5. 复现命令
 
 ```bash
 python eval_nuisance.py --checkpoint runs/nuisance-v0/epoch_20.pth --out runs/nuisance-v0/val-epoch20 --save-typed
 python metrics_nuisance.py runs/nuisance-v0/val-epoch20
-python metrics_multiclass.py --run runs/nuisance-v0/val-epoch20          # AUPRO 默认在 CPU
+python metrics_multiclass.py --run runs/nuisance-v0/val-epoch20          # AUPRO 默认在 CPU；--aupro-device cuda 为论文口径，hybrid 为 test 划分（809 张）用的省显存等价实现
+bash scripts/queue_testsplit.sh                                          # 全部方法在 test 划分上的主表（§2p）；补跑脚本 scripts/queue_testsplit_rerun.sh
 bash scripts/train_ablation.sh no-nuisance runs/ablation-no-nuisance      # 训练 + 评估一体
 python compare_fp.py runs/nuisance-v0/val-epoch20 runs/ablation-no-nuisance/val-epoch20   # 匹配 TPR 假阳性对比
 ```
