@@ -40,6 +40,8 @@
 
 **目标投稿**：Automation in Construction（主）；ICME 2027、CSCWD 2027（会议备选）。标题与摘要不再使用 anomaly detection / nuisance-aware 作为方法定位词。
 
+**命名（2026-11-08 定稿，paper-story.md §0）**：方法名 TypeAnchor；题目 "TypeAnchor: Text-Anchored Multi-Type Defect Segmentation on a Frozen Vision-Language Model for Concrete Bridge Inspection"；模块 Anchor Margin Readout（AMR，独立 sigmoid 类型头）、Local–Regional Similarity Mixture（LRM，逐锚点 γ）、Reference-Residual Gate（RRG，ν 门控）。论文对照保留 WPFormer 与 SegFormer-B2，去掉 MixerCSeg。
+
 ### 第三次改写（2026-11-04，去向 A，已被 §2g、§2h 更正，保留作记录）
 最终主模型：6 锚点 v2（`v2-no-nuisance`）= 检索式正常参考残差 + ν 门控的类无关通道与图像头 + 4 路解耦 sigmoid 类型头 + 逐锚点 γ 局部 / 区域自适应池化。不引入任何外部干扰监督，保持异常检测设定。验证集（原集 / Cleaned-Val，3 种子均值，二元数字为 §2k 修正值）：I-AUROC 92.3 / 94.6，P-AP 79.9 / 90.7，P-AUPRO 79.1 / 84.2，mAP 71.1 / 77.5，裂缝 P-AP 0.33 / 0.35。
 
