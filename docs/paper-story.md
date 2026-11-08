@@ -120,10 +120,14 @@ The cross-dataset results separate the two sources of accuracy. On S2DS and dacl
 
 The contributions are the following. We propose TypeAnchor, a text-anchored multi-type segmentation head for frozen CLIP with independent per-type readouts on anchor margins, a per-anchor local-regional similarity mixture, and a residual-gated class-agnostic channel, and we show through ablation which obstacle each part removes. We provide overlapping per-type pixel masks for CODEBRIM tiles together with an evaluation protocol for bridge inspection: per-type multi-label metrics, false-alarm area at matched recall, a cleaned validation split, two external test sets, and a reconciled P-AUPRO. We report, on the same data and protocol, how CLIP-based anomaly detectors, their multi-type extension and two fully supervised networks compare in-domain and across datasets, and we trace in-domain accuracy and cross-dataset accuracy to different causes.
 
-## 5. 写作前待用户确认的决定
+## 5. 已定事项（2026-11-08，用户决定）
 
-1. CODEBRIM 裁块与自标注掩码能否随论文公开：影响摘要与贡献里的 release 句子。
-2. 对比表是否保留 Bayes-PFL（检查点来自旧项目，种子与选轮方式不同，已在 results.md §2o 注明）。WPFormer 同样来自旧项目，用户已决定保留。
-3. 与 ProtoBridge 稿件的关系：两稿共用 CODEBRIM / S2DS 数据与标注，本稿需在数据部分说明标注来源。用户已决定 ProtoBridge 不进入对比表。
+1. CODEBRIM 裁块与自标注掩码：合理请求下提供（available on request），不写无条件公开。
+2. 对比表保留 Bayes-PFL 与 WPFormer（检查点来自旧项目，results.md §2o 注明选轮方式）。
+3. ProtoBridge 未发表，文中不提。
+4. 题目与模块名（§0）；中心主张（§1）；去掉 MixerCSeg；主表用 test 划分。
+5. 投稿格式：IEEE 会议模板（IEEEtran conference），正文含参考文献 6 页；作者暂列 Qiang Liu、Haifeng Zhong（湖南工业大学两处署名），其余作者待加。
 
-已定（2026-11-08）：题目与模块名（§0）；中心主张（§1）；去掉 MixerCSeg，保留 WPFormer 与 SegFormer-B2；主表用 test 划分。
+## 6. 初稿（2026-11-08）
+
+paper/main.tex、paper/refs.bib、paper/IEEEtran.cls，服务器编译 6 页无错误；打包 paper/TypeAnchor_overleaf.zip。主图（图 1 总览）与定性图（图 2）为占位框，待绘制。表 1 至表 4 数字来自 results.md §2p、§2o、§2l；消融表最后一列为验证集裂缝 P-AP（runs/*/val-epoch20/metrics_multiclass.json）。
