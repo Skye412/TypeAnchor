@@ -9,6 +9,7 @@
 \usepackage{url}
 \usepackage{stfloats}
 \newcommand{\best}[1]{\textbf{#1}}
+\newcommand{\second}[1]{\underline{#1}}
 \newcommand{\ours}{TypeAnchor}
 \newcommand{\fig}[2]{\fbox{\parbox[c][#1][c]{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\centering\small #2}}}
 
@@ -24,7 +25,7 @@ liuqiang@hut.edu.cn, hfz422875@stu.hut.edu.cn}}
 \maketitle
 
 \begin{abstract}
-Repair decisions for concrete bridges depend on the defect type: cracks are measured by width and orientation, spalling and corrosion by exposed area, efflorescence by the moisture path behind it. An inspection system therefore has to say which type is where, allow types to overlap on the same surface, and keep working on images from another agency without new pixel annotation. Fully supervised segmentation networks give type masks but lose most of their accuracy on a new image collection; anomaly detectors on frozen CLIP keep their accuracy across collections but return one binary map. \ours{} closes this gap by using the text embeddings of a frozen CLIP ViT-L/14 as a class interface for a light supervised head. An Anchor Margin Readout turns the similarity margin between each defect-type anchor and the intact-surface anchor into an independent per-type probability, so types may overlap. A Local-Regional Similarity Mixture learns per anchor how much patch-level and neighbourhood similarity to use, which keeps thin cracks visible while large defects draw on context. A Reference-Residual Gate derived from one intact image scales a class-agnostic defect channel and the image score. With 6.6 M trainable parameters, \ours{} obtains the highest pixel AP, pixel AUROC, image AP and image F1 of seven methods on the held-out CODEBRIM test split, ahead of SegFormer-B2 and WPFormer trained on the same tiles with four times the parameters, and at 90\% pixel recall it flags less than half the intact-surface area of any other method. Moved to S2DS and dacl10k without target data, \ours{} keeps 79\% of its per-type accuracy while SegFormer-B2 keeps 54\%, and leads both supervised networks in pixel AP on both sets. Per-type masks and the evaluation protocol are available on request.
+Repair decisions for concrete bridges depend on the defect type: cracks are measured by width and orientation, spalling and corrosion by exposed area, efflorescence by the moisture path behind it. An inspection system therefore has to say which type is where, allow types to overlap on the same surface, and keep working on images from another agency without new pixel annotation. Fully supervised segmentation networks give type masks but lose most of their accuracy on a new image collection; anomaly detectors on frozen CLIP keep their accuracy across collections but return one binary map. \ours{} closes this gap by using the text embeddings of a frozen CLIP ViT-L/14 as a class interface for a light supervised head. An Anchor Margin Readout turns the similarity margin between each defect-type anchor and the intact-surface anchor into an independent per-type probability, so types may overlap. A Local-Regional Similarity Mixture learns per anchor how much patch-level and neighbourhood similarity to use, which keeps thin cracks visible while large defects draw on context. A Reference-Residual Gate derived from one intact image scales a class-agnostic defect channel and the image score. With 6.6 M trainable parameters, \ours{} obtains the highest pixel AP, pixel AUROC, image AP and image F1 of seven methods on the held-out CODEBRIM test split, ahead of SegFormer-B2 and WPFormer trained on the same tiles with four times the parameters, and at 90\% pixel recall it flags less than half the intact-surface area of any other method. Moved to S2DS and dacl10k without target data, \ours{} keeps 79\% of its per-type accuracy while SegFormer-B2 keeps 54\%, and leads it by 14 and 7.5 points of per-type mean AP. Per-type masks and the evaluation protocol are available on request.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -40,9 +41,9 @@ Two obstacles keep these families from the inspection requirement. The first is 
 
 \ours{} removes both obstacles with one design decision: the text anchors of a frozen CLIP serve as a class interface for a light supervised head rather than as an anomaly detector. Six anchors represent intact surface, the four defect types and generic damaged surface. The Local-Regional Similarity Mixture (LRM) computes, for each anchor, the similarity to the projected patch tokens at patch level and over a residual-weighted neighbourhood and mixes the two with a learned per-anchor weight, so the crack anchor stays local while the spalling and efflorescence anchors use context. The Anchor Margin Readout (AMR) passes the margin between each type anchor and the intact anchor through an independent sigmoid; a pixel may be positive for several types. The Reference-Residual Gate (RRG) turns the residual between the query tokens and the nearest tokens of one intact reference image into a gate that scales a class-agnostic defect channel and the image-level head, so intact texture is suppressed and damage outside the four types is still reported. The head has 6.6 M trainable parameters and needs one arbitrary intact image at inference.
 
-We trained \ours{} on 2{,}861 CODEBRIM~\cite{codebrim} tiles, 917 of which carry overlapping per-type masks that we annotated, fixed every design choice on the validation split, and report on a test split of 809 tiles that no choice touched, and, without target data, on S2DS~\cite{s2ds} and a four-type subset of dacl10k~\cite{dacl10k}. On the test split \ours{} has the highest pixel AP (76.8), pixel AUROC (96.3), image AP (86.9) and image F1 (79.3) among seven methods trained on the same tiles, including SegFormer-B2 and WPFormer with four times its trainable parameters, and at 90\% pixel recall it flags 4.4\% of the intact surface where the next best method flags 9.5\%. Its per-type maps reach a mean AP of 59.4, within one point of the fully supervised SegFormer-B2 and 3.2 above MultiADS, with the best efflorescence AP by 12 points. Across datasets the value of the frozen backbone shows: \ours{} keeps 79\% of its per-type mean AP on S2DS while SegFormer-B2 keeps 54\%, and \ours{} leads both supervised networks in pixel AP on S2DS and dacl10k.
+We trained \ours{} on 2{,}861 CODEBRIM~\cite{codebrim} tiles, 917 of which carry overlapping per-type masks that we annotated, fixed every design choice on the validation split, and report on a test split of 809 tiles that no choice touched, and, without target data, on S2DS~\cite{s2ds} and a four-type subset of dacl10k~\cite{dacl10k}. On the test split \ours{} has the highest pixel AP (76.8), pixel AUROC (96.3), image AP (86.9) and image F1 (79.3) among seven methods trained on the same tiles, including SegFormer-B2 and WPFormer with four times its trainable parameters, and at 90\% pixel recall it flags 4.4\% of the intact surface where the next best method flags 9.5\%. Its per-type maps reach a mean AP of 59.4, within one point of the fully supervised SegFormer-B2 and 3.2 above MultiADS, with the best efflorescence AP by 12 points. Across datasets the value of the frozen backbone shows: \ours{} keeps 79\% of its per-type mean AP on S2DS while SegFormer-B2 keeps 54\%, and \ours{} leads it by 14 and 7.5 points of mean AP on S2DS and dacl10k.
 
-Our contributions are as follows. We propose \ours{}, a text-anchored multi-type segmentation head for frozen CLIP with independent per-type readouts on anchor margins, a per-anchor local-regional similarity mixture and a residual-gated class-agnostic channel, and we show through ablation which obstacle each part removes. We provide overlapping per-type pixel masks for CODEBRIM tiles and an evaluation protocol for bridge inspection with per-type multi-label metrics, false-alarm area at matched recall, a cleaned validation split and two external test sets. We compare, on one protocol, four CLIP-based detectors and two fully supervised networks in-domain and across datasets, and show that a light head on a frozen backbone gives the best in-domain detection and the accuracy that survives a change of collection.
+Our contributions are as follows. We propose \ours{}, a text-anchored multi-type segmentation head for frozen CLIP with independent per-type readouts on anchor margins, a per-anchor local-regional similarity mixture and a residual-gated class-agnostic channel, and we show through ablation which obstacle each part removes. We provide overlapping per-type pixel masks for CODEBRIM tiles and an evaluation protocol for bridge inspection with per-type multi-label metrics, false-alarm area at matched recall, a cleaned validation split and two external test sets. We compare, on one protocol, four CLIP-based detectors and two fully supervised networks in-domain and across datasets, and show that a light head on a frozen backbone gives the best in-domain detection and the per-type accuracy that survives a change of collection.
 
 \section{Related Work}
 \textbf{Defect segmentation in civil structures.} Pixel-level bridge inspection has been served by general segmentation backbones trained on inspection data~\cite{segformer,dacl10k}, by query-based decoders for surface defects~\cite{wpformer}, and by lightweight crack networks that exploit the thin, connected structure of cracks~\cite{scsegamba}. These networks learn the appearance of the training collection and return one label per pixel. CODEBRIM~\cite{codebrim} introduced multi-target labels at image level for six defect types; S2DS~\cite{s2ds} and dacl10k~\cite{dacl10k} provide pixel masks with a priority rule that flattens overlapping damage into one class per pixel. We annotate overlapping per-type masks on CODEBRIM tiles and evaluate each type as its own binary problem.
@@ -115,7 +116,7 @@ where $\mathcal{L}_{\mathrm{res}}$ and $\mathcal{L}_{\mathrm{cls}}$ are focal pl
 \subsection{In-domain results}
 \begin{table*}[t]
 \centering
-\caption{Detection and localisation on the CODEBRIM test split (809 tiles). Image-level and pixel-level metrics in \%. FA@0.8/0.9: fraction of intact-tile area (\%) flagged at the threshold giving 80\% / 90\% pixel recall on damaged tiles (lower is better). \ours{}: mean $\pm$ std over three seeds; other methods single runs.}
+\caption{Detection and localisation on the CODEBRIM test split (809 tiles). Image-level and pixel-level metrics in \%. FA@0.8/0.9: fraction of intact-tile area (\%) flagged at the threshold giving 80\% / 90\% pixel recall on damaged tiles (lower is better). \ours{}: mean $\pm$ std over three seeds; other methods single runs. Best in bold, second best underlined.}
 \label{tab:binary}
 \small
 \setlength{\tabcolsep}{5pt}
@@ -127,11 +128,11 @@ Method & Param. & AUROC & AP & F1 & AUROC & AP & F1 & AUPRO & FA@0.8 & FA@0.9 \\
 \midrule
 AnomalyCLIP~\cite{anomalyclip} & 5.6 M & 82.3 & 68.9 & 66.3 & 92.0 & 57.0 & 54.9 & 71.0 & 11.3 & 18.4 \\
 Bayes-PFL~\cite{bayespfl} & 27.4 M & 91.6 & 84.9 & 76.8 & 93.2 & 62.7 & 58.3 & 75.6 & 8.6 & 16.1 \\
-MultiADS~\cite{multiads} & 3.1 M & 72.3 & 55.1 & 56.4 & 93.7 & 69.8 & 64.9 & 78.8 & 6.5 & 12.0 \\
-AdaptCLIP~\cite{adaptclip} & 1.8 M & \best{92.7} & 86.3 & 78.2 & 95.5 & 73.3 & 68.0 & \best{80.4} & 4.6 & 9.5 \\
-SegFormer-B2~\cite{segformer} & 25 M & 90.2 & 84.4 & 76.8 & 94.7 & 76.4 & \best{71.5} & 68.6 & \best{2.4} & 10.0 \\
+MultiADS~\cite{multiads} & 3.1 M & 72.3 & 55.1 & 56.4 & 93.7 & 69.8 & 64.9 & \second{78.8} & 6.5 & 12.0 \\
+AdaptCLIP~\cite{adaptclip} & 1.8 M & \best{92.7} & \second{86.3} & \second{78.2} & \second{95.5} & 73.3 & 68.0 & \best{80.4} & 4.6 & \second{9.5} \\
+SegFormer-B2~\cite{segformer} & 25 M & 90.2 & 84.4 & 76.8 & 94.7 & \second{76.4} & \best{71.5} & 68.6 & \best{2.4} & 10.0 \\
 WPFormer~\cite{wpformer} & 26.1 M & 88.8 & 80.3 & 74.3 & 91.0 & 70.8 & 67.1 & 78.0 & 11.1 & 27.7 \\
-\ours{} & 6.6 M & 92.0$\pm$0.7 & \best{86.9}$\pm$0.6 & \best{79.3}$\pm$0.4 & \best{96.3}$\pm$0.5 & \best{76.8}$\pm$3.1 & 68.4$\pm$4.3 & 73.5$\pm$3.6 & 2.5 & \best{4.4} \\
+\ours{} & 6.6 M & \second{92.0}$\pm$0.7 & \best{86.9}$\pm$0.6 & \best{79.3}$\pm$0.4 & \best{96.3}$\pm$0.5 & \best{76.8}$\pm$3.1 & \second{68.4}$\pm$4.3 & 73.5$\pm$3.6 & \second{2.5} & \best{4.4} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -142,7 +143,7 @@ The false-alarm columns measure what an inspector sees on intact surface when th
 
 \begin{table}[t]
 \centering
-\caption{Per-type segmentation on the CODEBRIM test split for the three methods with type outputs. AP per type, mAP and best-threshold mIoU in \%.}
+\caption{Per-type segmentation on the CODEBRIM test split for the three methods with type outputs. AP per type, mAP and best-threshold mIoU in \%. Best in bold, second best underlined.}
 \label{tab:pertype}
 \small
 \setlength{\tabcolsep}{3.5pt}
@@ -150,9 +151,9 @@ The false-alarm columns measure what an inspector sees on intact surface when th
 \toprule
 Method & Crack & Corrosion & Spalling & Efflor. & mAP & mIoU \\
 \midrule
-MultiADS & 15.2 & 79.9 & 71.0 & 58.7 & 56.2 & 40.2 \\
+MultiADS & \second{15.2} & 79.9 & 71.0 & \second{58.7} & 56.2 & 40.2 \\
 SegFormer-B2 & \best{24.1} & \best{81.8} & \best{76.1} & 58.5 & \best{60.1} & \best{50.4} \\
-\ours{} & 10.3 & 80.8 & 76.0 & \best{70.5} & 59.4 & 40.7 \\
+\ours{} & 10.3 & \second{80.8} & \second{76.0} & \best{70.5} & \second{59.4} & \second{40.7} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -163,52 +164,45 @@ Table~\ref{tab:pertype} gives the per-type results. With 6.6 M trainable paramet
 \label{sec:ablation}
 \begin{table}[t]
 \centering
-\caption{Ablation of \ours{} on the CODEBRIM test split (seed 10). Val crack is the validation-split crack AP, where cracks are frequent enough to separate the variants.}
+\caption{Ablation of the three components on the CODEBRIM test split (seed 10). Val crack: validation-split crack AP, where cracks are frequent enough to separate the variants. Best in bold, second best underlined.}
 \label{tab:ablation}
-\scriptsize
-\setlength{\tabcolsep}{2.6pt}
+\small
+\setlength{\tabcolsep}{4pt}
 \resizebox{\linewidth}{!}{%
-\begin{tabular}{lcccccc}
+\begin{tabular}{lcccc}
 \toprule
-Variant & I-AUROC & P-AP & P-AUPRO & mAP & FA@0.8 & Val crack \\
+Variant & P-AP & mAP & FA@0.8 & Val crack \\
 \midrule
-Full \ours{} & 91.4 & 76.3 & 70.1 & 58.7 & 2.4 & 35.7 \\
-LRM: $\gamma=0$ (regional only) & 90.0 & 74.4 & 69.9 & 57.3 & 2.5 & 8.2 \\
-LRM: $\gamma=1$ (local only) & 90.6 & 75.0 & 72.0 & 59.4 & 2.3 & 37.6 \\
-AMR $\to$ 13-way softmax (v0) & 88.6 & 71.4 & 65.6 & 48.6 & 6.0 & 6.8 \\
-RRG removed (no residual) & 89.7 & 73.2 & 71.2 & 57.2 & 2.9 & 34.3 \\
-RRG without $\nu$ gating & 91.8 & 76.2 & 71.8 & 59.7 & 3.0 & 35.5 \\
-12 anchors (6 nuisance anchors) & 91.0 & 72.1 & 73.5 & 56.9 & 2.8 & 40.5 \\
+Full \ours{} & \best{76.3} & \best{58.7} & \best{2.4} & \best{35.7} \\
+w/o LRM local branch ($\gamma=0$) & \second{74.4} & \second{57.3} & \second{2.5} & 8.2 \\
+w/o AMR (13-way softmax readout) & 71.4 & 48.6 & 6.0 & 6.8 \\
+w/o RRG (no residual branch) & 73.2 & 57.2 & 2.9 & \second{34.3} \\
 \bottomrule
 \end{tabular}}
 \end{table}
 
-Table~\ref{tab:ablation} isolates the three components. The readout carries the most. Replacing the independent margins by the 13-way softmax of our first design costs 4.9 pixel AP and 10.1 mAP, raises the false-alarm area from 2.4\% to 6.0\%, and leaves crack AP at 6.8 on the validation split, because the softmax hands a thin crack to the intact anchor whenever the regional evidence is weak. The local branch of LRM is what keeps cracks: fixing $\gamma=0$ drops validation crack AP from 35.7 to 8.2 while the area classes move by less than two points; fixing $\gamma=1$ keeps the typed outputs and removes the regional evidence that the gated outputs rely on, so the gated mAP falls from 58.4 to 49.0. The residual branch of RRG adds 3.1 pixel AP on the test split and 9.7 on the validation split, where small defects on intact texture are the hard case; on cleaned intact validation tiles it reduces the flagged area at 80\% recall from 0.93\% to 0.12\%. Removing only the $\nu$ gate leaves the binary metrics unchanged; the gate is kept because it defines the class-agnostic channel that reports damage outside the four types. Six additional anchors naming nuisances such as shadow, water stain or repair patch receive 0.1\% of the arg-max assignments and give the same validation accuracy over three seeds, so the six-anchor model is the final one. Using one random intact tile instead of the four most similar retrieved tiles changes pixel AP by 0.2, so inference needs no reference library.
+Table~\ref{tab:ablation} isolates the three components. The readout carries the most. Replacing the independent margins by the 13-way softmax of our first design costs 4.9 pixel AP and 10.1 mAP, raises the false-alarm area from 2.4\% to 6.0\%, and leaves crack AP at 6.8 on the validation split, because the softmax hands a thin crack to the intact anchor whenever the regional evidence is weak. The local branch of LRM is what keeps cracks: fixing $\gamma=0$ drops validation crack AP from 35.7 to 8.2 while the area classes move by less than two points; fixing $\gamma=1$ instead removes the regional evidence that the gated outputs rely on and lowers the gated mAP from 58.4 to 49.0, so both branches are needed and the per-anchor mixture is what lets each type take the one it needs. The residual branch of RRG adds 3.1 pixel AP on the test split and 9.7 on the validation split, where small defects on intact texture are the hard case; on cleaned intact validation tiles it reduces the flagged area at 80\% recall from 0.93\% to 0.12\%. Using one random intact tile instead of the four most similar retrieved tiles changes pixel AP by 0.2, so inference needs no reference library.
 
 \subsection{Cross-dataset results}
 \begin{table*}[t]
 \centering
-\caption{Cross-dataset evaluation of the CODEBRIM-trained models on S2DS test (447 tiles) and the dacl10k four-type subset (262 tiles) without target-domain data. mAP only for methods with type outputs; retained mAP is the S2DS mAP as a fraction of the CODEBRIM test mAP.}
+\caption{Cross-dataset per-type segmentation of the CODEBRIM-trained models with type outputs on S2DS test (447 tiles) and the dacl10k four-type subset (262 tiles), without target-domain data. AP in \%; binary P-AP on the union mask for reference; retained mAP is the S2DS mAP as a fraction of the CODEBRIM test mAP. Best in bold, second best underlined.}
 \label{tab:cross}
 \small
-\setlength{\tabcolsep}{3.4pt}
+\setlength{\tabcolsep}{4.4pt}
 \begin{tabular}{lcccccc|cccccc|c}
 \toprule
 & \multicolumn{6}{c|}{S2DS test} & \multicolumn{6}{c|}{dacl10k} & \\
-Method & I-AUROC & I-AP & P-AUROC & P-AP & P-F1 & mAP & I-AUROC & I-AP & P-AUROC & P-AP & P-F1 & mAP & Retained mAP \\
+Method & Crack & Corr. & Spall. & Efflor. & mAP & P-AP & Crack & Corr. & Spall. & Efflor. & mAP & P-AP & Retained mAP \\
 \midrule
-AnomalyCLIP & 71.9 & 92.7 & 91.6 & 53.0 & 55.9 & -- & 53.4 & 81.5 & 80.4 & 26.1 & 32.5 & -- & -- \\
-Bayes-PFL & \best{85.1} & \best{96.7} & 92.1 & 56.3 & 56.6 & -- & \best{69.9} & 89.1 & 79.4 & 31.5 & 37.6 & -- & -- \\
-MultiADS & 76.2 & 93.5 & \best{96.1} & \best{71.5} & \best{72.3} & \best{52.8} & 67.4 & 87.1 & 81.5 & 36.2 & 39.7 & \best{18.5} & \best{94\%} \\
-AdaptCLIP & 81.3 & 95.4 & 93.7 & 62.9 & 64.0 & -- & 67.3 & 88.2 & \best{84.0} & \best{40.6} & \best{43.5} & -- & -- \\
-SegFormer-B2 & 74.3 & 93.4 & 91.7 & 63.0 & 59.4 & 32.7 & 56.2 & 83.3 & 75.1 & 22.0 & 26.2 & 8.6 & 54\% \\
-WPFormer & 84.6 & 96.0 & 90.2 & 64.4 & 61.4 & -- & 67.4 & 87.6 & 74.2 & 28.4 & 32.2 & -- & -- \\
-\ours{} & 78.1 & 93.9 & 95.4 & 70.9 & 71.1 & 46.6 & 69.8 & \best{90.0} & 80.6 & 32.8 & 36.1 & 16.1 & 79\% \\
+SegFormer-B2 (25 M) & \second{9.0} & 36.7 & 42.9 & 42.1 & 32.7 & 63.0 & \second{11.3} & 16.6 & 5.1 & 1.6 & 8.6 & 22.0 & 54\% \\
+MultiADS (3.1 M) & \best{13.9} & \second{59.1} & \best{72.6} & \best{65.6} & \best{52.8} & \best{71.5} & \best{12.3} & \second{40.5} & \best{15.1} & \best{6.1} & \best{18.5} & \best{36.2} & \best{94\%} \\
+\ours{} (6.6 M) & 7.5 & \best{64.6} & \second{61.0} & \second{53.3} & \second{46.6} & \second{70.9} & 4.9 & \best{44.0} & \second{12.9} & \second{2.6} & \second{16.1} & \second{32.8} & \second{79\%} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:cross} moves the same checkpoints to S2DS and dacl10k. The methods that output defect types from a frozen backbone, \ours{} and MultiADS, keep their per-type accuracy: \ours{} retains 79\% of its CODEBRIM mAP on S2DS and MultiADS 94\%, while SegFormer-B2 retains 54\% and falls to 8.6 mAP on dacl10k. In pixel AP \ours{} leads both supervised networks on both sets, by 6.5 and 7.9 points on S2DS and by 4.4 and 10.8 on dacl10k, and its S2DS pixel AUROC of 95.4 is 3.7 points above the best supervised network. On dacl10k \ours{} has the highest image AP of all methods (90.0) and an image AUROC within 0.1 of the best. The in-domain and cross-dataset tables together separate two sources of accuracy: the supervised type heads and the residual branch fit the appearance of the training collection and deliver the in-domain lead of Table~\ref{tab:binary}, while the frozen backbone and its alignment with the text anchors carry the per-type accuracy to a new collection. MultiADS, with 3.1 M linear parameters and no residual branch, retains the largest fraction and reaches the highest S2DS mAP; \ours{} combines the in-domain lead with 79\% retention, which is the operating point an agency needs when it trains on its own archive and deploys on new structures. Fine-tuning \ours{} for ten more epochs moves the external numbers by two to five points in inconsistent directions, so differences of that size between frozen-CLIP methods are within training noise, and the gap to the supervised networks is not.
+Table~\ref{tab:cross} moves the three methods with type outputs to S2DS and dacl10k, the setting an agency faces when it trains on its own archive and deploys on new structures. The two heads on a frozen backbone keep their per-type accuracy and the fully supervised network does not: \ours{} retains 79\% of its CODEBRIM mAP on S2DS, MultiADS 94\%, SegFormer-B2 54\%, and on dacl10k SegFormer-B2 falls to 8.6 mAP against 16.1 for \ours{}. The lead over SegFormer-B2 is 13.9 mAP on S2DS and 7.5 on dacl10k, and 7.9 and 10.8 points of binary pixel AP; the binary-only detectors and WPFormer reach 53.0 to 64.4 pixel AP on S2DS, also below both type-aware heads. On corrosion, the type whose cue is colour rather than shape, \ours{} is first on both external sets, 5.5 and 3.5 points ahead of MultiADS. The in-domain and cross-dataset tables together separate two sources of accuracy: the supervised type heads and the residual branch fit the appearance of the training collection and deliver the in-domain lead of Table~\ref{tab:binary}, while the frozen backbone and its alignment with the text anchors carry the per-type accuracy to a new collection. MultiADS, with 3.1 M linear parameters and no residual branch, retains the largest fraction; \ours{} combines the in-domain lead with 79\% retention. Fine-tuning \ours{} for ten more epochs moves the external numbers by two to five points in inconsistent directions, so differences of that size between the two frozen-CLIP heads are within training noise, and the gap to the supervised network is not.
 
 \subsection{Evaluation protocol}
 \label{sec:protocol}
@@ -228,7 +222,7 @@ Cracks are the type where resolution counts. Sliding-window inference at twice t
 Figure~\ref{fig:qual} shows type maps on the three test sets, including spalled regions with corrosion inside them that the independent readouts mark as both, and responses of the class-agnostic channel on damage outside the four types.
 
 \section{Conclusion}
-\ours{} uses the text anchors of a frozen CLIP as a class interface for a light supervised head: independent readouts on anchor margins give overlapping per-type masks, a per-anchor local-regional mixture keeps thin cracks visible, and a residual gate from one intact image suppresses responses on intact texture. On a held-out CODEBRIM test split the head has the highest pixel AP, pixel AUROC, image AP and image F1 of seven methods, ahead of two fully supervised networks with four times its trainable parameters, and flags less than half the intact-surface area of any other method at 90\% recall. Moved to S2DS and dacl10k without target data, it keeps 79\% of its per-type accuracy and leads both supervised networks in pixel AP. A light head on a frozen vision-language backbone gives bridge inspection both the in-domain accuracy of supervision and the accuracy that survives a change of image collection.
+\ours{} uses the text anchors of a frozen CLIP as a class interface for a light supervised head: independent readouts on anchor margins give overlapping per-type masks, a per-anchor local-regional mixture keeps thin cracks visible, and a residual gate from one intact image suppresses responses on intact texture. On a held-out CODEBRIM test split the head has the highest pixel AP, pixel AUROC, image AP and image F1 of seven methods, ahead of two fully supervised networks with four times its trainable parameters, and flags less than half the intact-surface area of any other method at 90\% recall. Moved to S2DS and dacl10k without target data, it keeps 79\% of its per-type accuracy where the fully supervised network keeps 54\%. A light head on a frozen vision-language backbone gives bridge inspection both the in-domain accuracy of supervision and the accuracy that survives a change of image collection.
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
