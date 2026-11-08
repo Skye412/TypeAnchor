@@ -703,6 +703,38 @@ WPFormer 的加入不改变下面的解读，只补一条：全监督二元分�
 
 **对故事线的影响**：用户 2026-11-08 决定论文只保留 WPFormer 与 SegFormer-B2 两个全监督对照，MixerCSeg 的行留在本文件作记录、不进论文；方法命名为 TypeAnchor，三个模块为 AMR / LRM / RRG（paper-story.md §0）。paper-story.md 的"域内 +20"与"ν 门控有用"两条主张撤回；可写的域内主张改为"二元像素精度与全监督分割持平、与 AdaptCLIP 基线相近，按类输出与匹配召回下的低误报是本方法区别于二元方法的地方"。见 paper-story.md 2026-11-08 的改写。
 
+## 2q. 按类表补两条参照：零样本 CLIP 与 DeepLabV3-R50（2026-11-09，eval_zeroshot.py、train_deeplab.py、scripts/queue_extra_baselines.sh、queue_zeroshot_rerun.sh、queue_extra_rerun.sh）
+
+论文表 2、表 4 只有三个带类型输出的方法，用户要求补一个零样本冻结 CLIP 按类基线和第二个全监督按类网络。
+
+**零样本 CLIP**：冻结 ViT-L/14@336（518 输入，DPAM 第 20 层，与 AdaptCLIP 一致），锚点名与最终模型相同（intact / crack / rust stain / spalling / efflorescence），4 模板手写提示集成，不训练。每格取 4 层平均余弦，按类做 (intact, 该类) 二路 softmax、尺度 100，二元图 = 四类最大值，37×37 双线性到 518、σ = 4 高斯平滑，图像分数 = 二元图前 1% 像素均值。输出目录格式同 eval_nuisance.py，指标脚本不变。结果在 runs/zeroshot-clip/{val,test,s2ds-test,dacl10k-test}。
+
+**DeepLabV3-R50**：torchvision deeplabv3_resnet50，ImageNet-1k V2 骨干（本地缓存），4 通道 sigmoid 输出，39.6 M 参数全部可训练；Tiles / loss_fn / evaluate / 增广从 train_segformer.py 原样导入，AdamW 1e-4（分类头 ×10）、权重衰减 0.01、batch 8、40 epoch 取最后一轮，seed 10，混合精度。训练 1 h 4 min，末轮损失 0.201。结果在 runs/deeplabv3-r50/{val-epoch40,test-epoch40,s2ds-test,dacl10k-test}。
+
+两条队列并行时三项 P-AUPRO 撞显存失败（zeroshot test、deeplab test、deeplab s2ds），用 queue_extra_rerun.sh 串行重跑后全部完成；test 的 P-AUPRO 为 hybrid 口径，与 §2p 一致。
+
+### 2q.1 数字（typed 变体，P-AP；mIoU 为逐类最佳阈值）
+
+| 划分 | 方法 | I-AUROC | I-AP | I-F1 | P-AUROC | P-AP | P-F1 | P-AUPRO | 裂缝 | 锈蚀 | 剥落 | 泛碱 | mAP | mIoU |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| val 400 | 零样本 CLIP | 60.4 | 45.2 | 49.6 | 37.8 | 4.8 | 12.1 | 27.1 | 3.4 | 19.8 | 5.6 | 8.8 | 9.4 | 7.8 |
+| Cleaned-Val 379 | 零样本 CLIP | 59.4 | 47.5 | 51.4 | 37.3 | 5.0 | 12.7 | 26.8 | 3.6 | 24.2 | 6.0 | 9.4 | 10.8 | 8.8 |
+| test 809 | 零样本 CLIP | 53.4 | 35.0 | 48.3 | 36.3 | 6.7 | 16.9 | 18.9 | 0.5 | 33.8 | 8.9 | 6.2 | 12.4 | 10.2 |
+| S2DS test | 零样本 CLIP | 56.7 | 87.7 | 91.2 | 36.3 | 8.3 | 20.5 | 26.0 | 1.0 | 25.8 | 7.5 | 3.7 | 9.5 | 8.0 |
+| dacl10k | 零样本 CLIP | 40.0 | 74.6 | 88.3 | 44.7 | 5.3 | 11.9 | 11.1 | 0.5 | 21.1 | 6.2 | 2.7 | 7.6 | 6.9 |
+| val 400 | DeepLabV3-R50 | 85.7 | 77.3 | 78.5 | 98.3 | 82.4 | 80.1 | 62.2 | 24.6 | 78.7 | 77.7 | 92.1 | 68.3 | 56.0 |
+| Cleaned-Val 379 | DeepLabV3-R50 | 87.8 | 84.7 | 82.3 | 98.8 | 91.1 | 85.7 | 65.1 | 27.4 | 81.4 | 98.3 | 92.1 | 74.8 | 64.5 |
+| test 809 | DeepLabV3-R50 | 84.0 | 79.7 | 70.2 | 92.3 | 77.1 | 73.2 | 61.9 | 21.9 | 66.5 | 63.5 | 84.9 | 59.2 | 46.7 |
+| S2DS test | DeepLabV3-R50 | 70.8 | 91.6 | 91.2 | 77.7 | 38.3 | 40.3 | 22.0 | 6.7 | 31.8 | 32.6 | 16.9 | 22.0 | 17.6 |
+| dacl10k | DeepLabV3-R50 | 68.5 | 89.5 | 88.3 | 67.9 | 21.2 | 27.1 | 24.7 | 7.6 | 16.3 | 6.4 | 3.5 | 8.4 | 6.5 |
+
+### 2q.2 解读
+
+- **零样本 CLIP 的像素 AUROC 在四个划分上都是 36 至 45，低于随机**：原始 CLIP patch token 对局部语义的响应方向相反（CLIP Surgery、AnomalyCLIP 都记录过这一现象），DPAM 只改最后几层，手写提示的二路 softmax 不足以纠正。它在论文里的作用是基线锚定：同一骨干、同一提示，不训练时按类 mAP 12.4（test），本方法 59.4，按类能力来自 6.6 M 的头而不是 CLIP 本身。验证集与 test 一致，不是脚本错误。
+- **DeepLabV3-R50 域内与本方法持平、跨域崩得比 SegFormer 更狠**：test 按类 mAP 59.2（本方法 59.4，SegFormer 60.1），泛碱 84.9 是全部方法最高，锈蚀 66.5 / 剥落 63.5 比 SegFormer 与本方法低 13 至 15；S2DS mAP 22.0（保留率 37%，SegFormer 54%，本方法 79%，MultiADS 94%），dacl10k 8.4。
+- **DeepLab 的二元像素指标在 test 上高于本方法**：P-AP 77.1 对 76.8 ± 3.1、P-F1max 73.2 对 68.4 ± 4.3、P-AUROC 92.3 对 96.3；图像级 I-AUROC 84.0 / I-AP 79.7 低于本方法 92.0 / 86.9。它不进论文表 1（用户 2026-11-09 决定），表 1 的"七个方法中像素 AP 最高"口径未变；若把 DeepLab 加进表 1，像素 AP 第一会变成 DeepLab（差 0.3，在本方法的种子标准差之内）。
+- 论文改动（paper/main.tex）：对比方法段加两条参照；表 2 增 Train. 列与两行、表 4 增两行（零样本行保留率标"--"，因为它没有在 CODEBRIM 上拟合过）；按类与跨域段落、摘要、引言、结论按新数字改写；refs.bib 加 deeplabv3；仍 6 页。
+
 ## 3. 前提检验：统计擦除充分性（已完成，见 audit-design.md）
 
 DINOv2 与 CLIP 骨干上，IDEAL 式 NVE 擦除（α=0.8）使正常图被标面积仅变化 −2.9% / −1.8%，完全投影（α=0）反而上升；预注册判定"统计擦除不足，主路线成立"。
@@ -717,6 +749,7 @@ DINOv2 与 CLIP 骨干上，IDEAL 式 NVE 擦除（α=0.8）使正常图被标�
 - 与 AnomalyCLIP、Bayes-PFL、MultiADS 的对比已完成（§2o）：域内本方法最好，跨数据集不如 MultiADS，卖点需要重写。
 - "不带细节支路多训 10 epoch"对照已完成（§2n.1）；可训练参数量更正为 6.59 M（§2n.2）。
 - 2026-11-08：WPFormer、MixerCSeg 按本仓库口径重评并补进 §2o；全部方法在 CODEBRIM test 划分（809 张）上重评，主表切到 test（§2p）。对基线的域内优势从 +20 缩到 +3.5，ν 门控在 test 上无可测效果，故事线已按 §2p.4 改写（paper-story.md）。基线 test 的 P-AUPRO 80.4 已补。
+- 2026-11-09：补零样本 CLIP 与 DeepLabV3-R50 两条按类参照（§2q），论文表 2 / 表 4 各加两行。DeepLab 的二元 P-AP 77.1 高于本方法 0.3；用户 2026-11-09 决定不进表 1，表 1 保持七个方法。
 
 ## 5. 复现命令
 
