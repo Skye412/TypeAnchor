@@ -1,0 +1,2 @@
+26-10-30 15:23:42.386 - INFO: 
+loading model from: /home/skye/data/Skye/AdaptCLIP/adaptclip_checkpoints/12_4_128_train_on_mvtec_3adapters_batch8/epoch_15.pth

@@ -1,0 +1,8 @@
+{
+  "method": "MultiADS (official code, linear layers trained on CODEBRIM train, 10 epochs, last epoch)",
+  "checkpoint": "runs/ext-multiads/epoch_10.pth",
+  "sha256": "193a6c072a49b35787ecaef99ecc8d357dd3d6cea2f8d69d117ec8541804e40d",
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "val",
+  "count": 400
+}

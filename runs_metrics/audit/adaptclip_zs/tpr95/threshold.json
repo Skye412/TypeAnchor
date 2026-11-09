@@ -1,0 +1,7 @@
+{
+  "model": "adaptclip_zs",
+  "tpr_target": 0.95,
+  "threshold": 0.025230342708528045,
+  "pixel_fpr_on_anomaly_images": 0.6774937807070853,
+  "n_images": 123
+}

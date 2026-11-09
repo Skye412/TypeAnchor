@@ -1,0 +1,13 @@
+{
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "out": "runs/segformer-b2",
+  "epochs": 40,
+  "bs": 8,
+  "lr": 6e-05,
+  "seed": 10,
+  "max_steps": 0,
+  "eval_only": false,
+  "split": "val",
+  "eval_data": null,
+  "eval_out": null
+}

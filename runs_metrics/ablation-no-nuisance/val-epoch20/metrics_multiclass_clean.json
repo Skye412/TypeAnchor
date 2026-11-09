@@ -1,0 +1,96 @@
+{
+  "images": 379,
+  "split": "val",
+  "exclude": "eval_exclude_normals.txt",
+  "P-AUPRO": 0.7374096512794495,
+  "P-AUPRO_note": "metrics.AUPRO fpr_limit=0.3 at 518, union GT bilinear>127, identical to the baseline-v1 evaluator",
+  "per_class": {
+    "Crack": {
+      "gt_pixels": 165419,
+      "typed": {
+        "P-AUROC": 0.9783067780171505,
+        "P-AP": 0.09076487452742489,
+        "IoU@0.3": 0.09207385269797033,
+        "IoU_best": 0.0926531339570539,
+        "thr_best": 0.35,
+        "normal_flagged_area@0.3": 0.00019772620973151862
+      },
+      "gated": {
+        "P-AUROC": 0.924650340911896,
+        "P-AP": 0.3515805816374475,
+        "IoU@0.3": 0.18405996409712672,
+        "IoU_best": 0.3107118496179162,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 3.0571715537931754e-06
+      }
+    },
+    "Corrosion": {
+      "gt_pixels": 402682,
+      "typed": {
+        "P-AUROC": 0.9919022464392326,
+        "P-AP": 0.6046351468729784,
+        "IoU@0.3": 0.4579959312715929,
+        "IoU_best": 0.5859575863877328,
+        "thr_best": 0.2,
+        "normal_flagged_area@0.3": 9.669396885854415e-05
+      },
+      "gated": {
+        "P-AUROC": 0.9360932595712365,
+        "P-AP": 0.7772171858029542,
+        "IoU@0.3": 0.4057905295170123,
+        "IoU_best": 0.6621380988690375,
+        "thr_best": 0.1,
+        "normal_flagged_area@0.3": 0.0
+      }
+    },
+    "Spalling": {
+      "gt_pixels": 1593045,
+      "typed": {
+        "P-AUROC": 0.9978765540402772,
+        "P-AP": 0.9098159302126787,
+        "IoU@0.3": 0.7729832359071671,
+        "IoU_best": 0.7755269023941412,
+        "thr_best": 0.25,
+        "normal_flagged_area@0.3": 0.0009414923748900583
+      },
+      "gated": {
+        "P-AUROC": 0.9963255316885187,
+        "P-AP": 0.9598517056210855,
+        "IoU@0.3": 0.7969827955851307,
+        "IoU_best": 0.8627155657550466,
+        "thr_best": 0.1,
+        "normal_flagged_area@0.3": 0.00012019051594341169
+      }
+    },
+    "Efflorescence": {
+      "gt_pixels": 4995329,
+      "typed": {
+        "P-AUROC": 0.9837753728664098,
+        "P-AP": 0.7789583280827644,
+        "IoU@0.3": 0.5702123853133189,
+        "IoU_best": 0.5987218763888166,
+        "thr_best": 0.2,
+        "normal_flagged_area@0.3": 0.0017284665646755415
+      },
+      "gated": {
+        "P-AUROC": 0.9579710484445533,
+        "P-AP": 0.7254047396619046,
+        "IoU@0.3": 0.3812747828675306,
+        "IoU_best": 0.492405570142955,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.000545166477840223
+      }
+    }
+  },
+  "variants": [
+    "typed",
+    "gated"
+  ],
+  "mIoU@0.3_typed": 0.47331635129751226,
+  "mIoU_best_typed": 0.5132148747819361,
+  "mAP_typed": 0.5960435699239616,
+  "mIoU@0.3_gated": 0.4420270180167001,
+  "mIoU_best_gated": 0.5819927710962388,
+  "mAP_gated": 0.7035135531808479,
+  "per_class_note": "GT from multiclass_annotations (overlap allowed, nearest 518); IoU_best is selected on this split and is optimistic. typed = raw type probability (v0: pi_c; v2: sigmoid head), gated = typed*residual, nugated = typed*nu (v2 only, the model output)"
+}

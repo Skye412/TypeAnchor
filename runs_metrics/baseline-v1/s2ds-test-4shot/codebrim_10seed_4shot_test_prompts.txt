@@ -1,0 +1,4 @@
+/home/skye/data/Skye/databases/Bridge512_balance_S2DS/train/normal/s2ds_test_650__tile_x0512_y0000.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_S2DS/train/normal/normal_01260__tile_x0000_y0000.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_S2DS/train/normal/s2ds_train_293__tile_x0000_y0000.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_S2DS/train/normal/s2ds_train_013__tile_x0000_y0512.jpg

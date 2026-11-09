@@ -1,0 +1,9 @@
+26-11-08 07:44:50.187 - INFO: 
+loading model from: runs/baseline-v1/epoch_15.pth
+26-11-08 15:54:44.948 - INFO: 
+loading model from: runs/baseline-v1/epoch_15.pth
+26-11-08 15:58:12.971 - INFO: SAVE_MAPS: wrote 809 maps to runs/baseline-v1/test-zero-gpu
+26-11-08 15:59:55.105 - INFO: 
+|        Name        |  I-AUROC  |  I-AP  |  I-F1max  |  P-AUROC  |  P-AP  |  P-F1max  |
+|:------------------:|:---------:|:------:|:---------:|:---------:|:------:|:---------:|
+| structural defects |   92.7    |  86.3  |   78.2    |   95.5    |  73.3  |   68.0    |

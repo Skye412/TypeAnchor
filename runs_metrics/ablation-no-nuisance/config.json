@@ -1,0 +1,16 @@
+{
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "out": "runs/ablation-no-nuisance",
+  "epochs": 20,
+  "seed": 10,
+  "anchor_set": "no-nuisance",
+  "bank": "runs/nuisance-v0/normal_globals.pt",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface"
+  ]
+}

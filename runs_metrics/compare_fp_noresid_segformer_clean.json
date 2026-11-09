@@ -1,0 +1,68 @@
+{
+  "runs/ablation-v2-no-nuisance/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.601378470659256,
+      "normal_img_flagged_area": 0.0004136935430673365,
+      "anomaly_img_bg_fpr": 0.023703923488616118
+    },
+    "tpr0.8": {
+      "threshold": 0.09047588258981705,
+      "normal_img_flagged_area": 0.0011829361378408194,
+      "anomaly_img_bg_fpr": 0.05869929269098033
+    },
+    "tpr0.9": {
+      "threshold": 0.016477737016975875,
+      "normal_img_flagged_area": 0.002793963640971363,
+      "anomaly_img_bg_fpr": 0.0880203991804492
+    },
+    "normal_img_flagged_area@0.5": 0.0004679947330466153,
+    "normal_img_max_mean": 0.01882200688123703
+  },
+  "runs/abl-v2-no-residual/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.36234937608242035,
+      "normal_img_flagged_area": 0.0006911100246343973,
+      "anomaly_img_bg_fpr": 0.03580950417655699
+    },
+    "tpr0.8": {
+      "threshold": 0.00014116291422396868,
+      "normal_img_flagged_area": 0.009820493950410698,
+      "anomaly_img_bg_fpr": 0.12912693059766203
+    },
+    "tpr0.9": {
+      "threshold": 2.4843285473252763e-07,
+      "normal_img_flagged_area": 0.021508351959757605,
+      "anomaly_img_bg_fpr": 0.1784978477502803
+    },
+    "normal_img_flagged_area@0.5": 0.0005213059817608563,
+    "normal_img_max_mean": 0.02471107430756092
+  },
+  "runs/segformer-b2/val-epoch40": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.9952927827835083,
+      "normal_img_flagged_area": 0.00013182232580760572,
+      "anomaly_img_bg_fpr": 0.01762328618539131
+    },
+    "tpr0.8": {
+      "threshold": 0.9623273491859435,
+      "normal_img_flagged_area": 0.0002201309098328886,
+      "anomaly_img_bg_fpr": 0.02315368854792209
+    },
+    "tpr0.9": {
+      "threshold": 0.8085119783878326,
+      "normal_img_flagged_area": 0.0004908798458207242,
+      "anomaly_img_bg_fpr": 0.029033123611584694
+    },
+    "normal_img_flagged_area@0.5": 0.0013121380308880309,
+    "normal_img_max_mean": 0.031760074198246
+  }
+}

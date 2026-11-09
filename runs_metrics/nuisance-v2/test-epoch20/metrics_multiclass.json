@@ -1,0 +1,132 @@
+{
+  "images": 809,
+  "split": "test",
+  "exclude": null,
+  "P-AUPRO": 0.7351343631744385,
+  "P-AUPRO_note": "metrics.AUPRO fpr_limit=0.3 at 518, union GT bilinear>127, identical to the baseline-v1 evaluator",
+  "per_class": {
+    "Crack": {
+      "gt_pixels": 366536,
+      "typed": {
+        "P-AUROC": 0.8581282179892198,
+        "P-AP": 0.09186311359441149,
+        "IoU@0.3": 0.029584694778421967,
+        "IoU_best": 0.0552797777782032,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.00013080864588743124
+      },
+      "gated": {
+        "P-AUROC": 0.8410289177921444,
+        "P-AP": 0.12043378543851085,
+        "IoU@0.3": 0.0247469528964833,
+        "IoU_best": 0.04785304785304785,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 3.975965052872076e-05
+      },
+      "nugated": {
+        "P-AUROC": 0.8564374782151681,
+        "P-AP": 0.0863813101705031,
+        "IoU@0.3": 0.02157716212771798,
+        "IoU_best": 0.04162043968590786,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 6.423590896094287e-05
+      }
+    },
+    "Corrosion": {
+      "gt_pixels": 2066692,
+      "typed": {
+        "P-AUROC": 0.9807923492776537,
+        "P-AP": 0.8116804941453942,
+        "IoU@0.3": 0.5926084558901343,
+        "IoU_best": 0.597652662806382,
+        "thr_best": 0.15,
+        "normal_flagged_area@0.3": 0.002008530496477903
+      },
+      "gated": {
+        "P-AUROC": 0.9787099295148451,
+        "P-AP": 0.8178127435290656,
+        "IoU@0.3": 0.5734638295979013,
+        "IoU_best": 0.6202313262945176,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.0007511491754421943
+      },
+      "nugated": {
+        "P-AUROC": 0.9808699926461346,
+        "P-AP": 0.8210456514487928,
+        "IoU@0.3": 0.5859603609391032,
+        "IoU_best": 0.5991690800779138,
+        "thr_best": 0.1,
+        "normal_flagged_area@0.3": 0.0016611623624041448
+      }
+    },
+    "Spalling": {
+      "gt_pixels": 10007679,
+      "typed": {
+        "P-AUROC": 0.9311293243650856,
+        "P-AP": 0.7466379801826937,
+        "IoU@0.3": 0.43662049829255045,
+        "IoU_best": 0.48588823629936767,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.001900230607316071
+      },
+      "gated": {
+        "P-AUROC": 0.906531252182296,
+        "P-AP": 0.7100428777738526,
+        "IoU@0.3": 0.4066794277761872,
+        "IoU_best": 0.46636186353467624,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.001298356390707429
+      },
+      "nugated": {
+        "P-AUROC": 0.9305842147464751,
+        "P-AP": 0.7443039056509597,
+        "IoU@0.3": 0.4160511002940695,
+        "IoU_best": 0.4687713635177197,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.0015541786177286543
+      }
+    },
+    "Efflorescence": {
+      "gt_pixels": 9640891,
+      "typed": {
+        "P-AUROC": 0.9680825777216382,
+        "P-AP": 0.6248692360036805,
+        "IoU@0.3": 0.37103878305289373,
+        "IoU_best": 0.4031851095244837,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.0043326200636020105
+      },
+      "gated": {
+        "P-AUROC": 0.9231745620531889,
+        "P-AP": 0.5745240080409869,
+        "IoU@0.3": 0.31911288344443484,
+        "IoU_best": 0.35467967178806215,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.0020980686116864765
+      },
+      "nugated": {
+        "P-AUROC": 0.9663233067681066,
+        "P-AP": 0.6244213155437311,
+        "IoU@0.3": 0.35078569868079706,
+        "IoU_best": 0.3891182080015107,
+        "thr_best": 0.05,
+        "normal_flagged_area@0.3": 0.003443033976269915
+      }
+    }
+  },
+  "variants": [
+    "typed",
+    "gated",
+    "nugated"
+  ],
+  "mIoU@0.3_typed": 0.3574631080035001,
+  "mIoU_best_typed": 0.38550144660210917,
+  "mAP_typed": 0.568762705981545,
+  "mIoU@0.3_gated": 0.33100077342875167,
+  "mIoU_best_gated": 0.372281477367576,
+  "mAP_gated": 0.555703353695604,
+  "mIoU@0.3_nugated": 0.34359358051042194,
+  "mIoU_best_nugated": 0.374669772820763,
+  "mAP_nugated": 0.5690380457034967,
+  "per_class_note": "GT from multiclass_annotations (overlap allowed, nearest 518); IoU_best is selected on this split and is optimistic. typed = raw type probability (v0: pi_c; v2: sigmoid head), gated = typed*residual, nugated = typed*nu (v2 only, the model output)"
+}

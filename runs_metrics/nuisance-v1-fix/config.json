@@ -1,0 +1,29 @@
+{
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "out": "runs/nuisance-v1-fix",
+  "epochs": 20,
+  "seed": 10,
+  "anchor_set": "full",
+  "bank": "runs/nuisance-v0/normal_globals.pt",
+  "bg_target": "pseudo",
+  "pseudo_conf": 0.5,
+  "no_pseudo_center": false,
+  "freeze_nuisance": true,
+  "prior": "hand",
+  "max_steps": 0,
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface",
+    "water stain on concrete",
+    "shadow on concrete",
+    "moss on concrete",
+    "patch repair on concrete",
+    "graffiti on concrete",
+    "formwork texture on concrete",
+    "dirt on concrete"
+  ]
+}

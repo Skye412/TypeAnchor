@@ -1,0 +1,6 @@
+{
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "out": "runs/nuisance-v0",
+  "epochs": 20,
+  "seed": 10
+}

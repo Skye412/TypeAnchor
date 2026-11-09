@@ -1,0 +1,90 @@
+{
+  "runs/nuisance-v0/val-epoch20": {
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.6990605294704437,
+      "normal_img_flagged_area": 0.004870142712859076,
+      "anomaly_img_bg_fpr": 0.02796868436207654
+    },
+    "tpr0.8": {
+      "threshold": 0.24413850009441357,
+      "normal_img_flagged_area": 0.01713920188196424,
+      "anomaly_img_bg_fpr": 0.09201350706739721
+    },
+    "tpr0.9": {
+      "threshold": 0.09418393447995177,
+      "normal_img_flagged_area": 0.02936726583632902,
+      "anomaly_img_bg_fpr": 0.13024095878335418
+    },
+    "normal_img_flagged_area@0.5": 0.008867425054370123,
+    "normal_img_max_mean": 0.13132137060165405
+  },
+  "runs/ablation-no-nuisance/val-epoch20": {
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.651862770318985,
+      "normal_img_flagged_area": 0.0066478173889349896,
+      "anomaly_img_bg_fpr": 0.02891918891077527
+    },
+    "tpr0.8": {
+      "threshold": 0.1727320462465286,
+      "normal_img_flagged_area": 0.029499561847665494,
+      "anomaly_img_bg_fpr": 0.12139083182968492
+    },
+    "tpr0.9": {
+      "threshold": 0.05371988303959364,
+      "normal_img_flagged_area": 0.07387009411597176,
+      "anomaly_img_bg_fpr": 0.17830394901718025
+    },
+    "normal_img_flagged_area@0.5": 0.010746033797063166,
+    "normal_img_max_mean": 0.1570023149251938
+  },
+  "runs/nuisance-v1-fix/val-epoch20": {
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.6728032529354095,
+      "normal_img_flagged_area": 0.00461165893681958,
+      "anomaly_img_bg_fpr": 0.023696395258878216
+    },
+    "tpr0.8": {
+      "threshold": 0.26860731840133667,
+      "normal_img_flagged_area": 0.022066592589152282,
+      "anomaly_img_bg_fpr": 0.09102644753250846
+    },
+    "tpr0.9": {
+      "threshold": 0.11007448583841317,
+      "normal_img_flagged_area": 0.04175850339239102,
+      "anomaly_img_bg_fpr": 0.14850991239387817
+    },
+    "normal_img_flagged_area@0.5": 0.008959116025310637,
+    "normal_img_max_mean": 0.10724429041147232
+  },
+  "runs/nuisance-v2/val-epoch20": {
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.5345919132232666,
+      "normal_img_flagged_area": 0.007733982038095331,
+      "anomaly_img_bg_fpr": 0.029801677214677847
+    },
+    "tpr0.8": {
+      "threshold": 0.017546113952994345,
+      "normal_img_flagged_area": 0.021949674828701353,
+      "anomaly_img_bg_fpr": 0.08169372734414841
+    },
+    "tpr0.9": {
+      "threshold": 0.0007681016402784735,
+      "normal_img_flagged_area": 0.03223207387028248,
+      "anomaly_img_bg_fpr": 0.12387540982034723
+    },
+    "normal_img_flagged_area@0.5": 0.008205003197546024,
+    "normal_img_max_mean": 0.07609767466783524
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "checkpoint": "runs/nuisance-v0/epoch_20.pth",
+  "sha256": "bd3ad1ac46e193ce6baa620a23e2da55b0d75ff02128cfb6a2a93af735520518",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface",
+    "water stain on concrete",
+    "shadow on concrete",
+    "moss on concrete",
+    "patch repair on concrete",
+    "graffiti on concrete",
+    "formwork texture on concrete",
+    "dirt on concrete"
+  ],
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_S2DS",
+  "ref_data": "/home/skye/data/Skye/databases/Bridge512_balance_S2DS",
+  "split": "test",
+  "count": 447,
+  "references": "top4 training normal globals",
+  "bank": "runs/banks/s2ds_train_normals.pt",
+  "ref_subset": 0,
+  "ref_seed": 10,
+  "reference_samples": "all",
+  "image_score": "0.5 image softmax + 0.5 top 1% binary map mean",
+  "map_size": 518,
+  "typed_maps_saved": true
+}

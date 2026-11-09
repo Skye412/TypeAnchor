@@ -1,0 +1,16 @@
+{
+  "checkpoint": "runs/ablation-v2-no-nuisance/epoch_20.pth",
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "ref_data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "val",
+  "count": 400,
+  "tiled": {
+    "scale": 2,
+    "windows": 9,
+    "stride": 259,
+    "blend": 0.0,
+    "tile_refs": false
+  },
+  "image_score": "0.5 full-image softmax + 0.5 top 1% of final binary map",
+  "map_size": 518
+}

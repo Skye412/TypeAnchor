@@ -1,0 +1,16 @@
+{
+  "model": "zero-shot frozen CLIP ViT-L/14@336, hand prompts (4 templates), two-way softmax per type, scale 100, sigma 4.0",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete"
+  ],
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_S2DS",
+  "split": "test",
+  "count": 447,
+  "image_score": "top 1% binary map mean",
+  "map_size": 518,
+  "binary": "max over 4 type probabilities"
+}

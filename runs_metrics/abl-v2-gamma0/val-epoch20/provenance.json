@@ -1,0 +1,19 @@
+{
+  "checkpoint": "runs/abl-v2-gamma0/epoch_20.pth",
+  "sha256": "31ffe8ba407ce14f441a84c6041771f887e0643f5ffd880191a42adfbd9e60dc",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface"
+  ],
+  "split": "val",
+  "count": 400,
+  "references": "top4 training normal globals",
+  "bank": "runs/nuisance-v0/normal_globals.pt",
+  "image_score": "0.5 image softmax + 0.5 top 1% binary map mean",
+  "map_size": 518,
+  "typed_maps_saved": true
+}

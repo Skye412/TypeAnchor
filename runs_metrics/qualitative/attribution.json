@@ -1,0 +1,272 @@
+{
+  "thresholds": {
+    "v0_tpr0.8": 0.24413850009441357,
+    "abl_tpr0.8": 0.1727320462465286
+  },
+  "normal_images": 277,
+  "images_with_R": 51,
+  "R_cells_total": 6627,
+  "argmax_anchor_in_R": {
+    "normal": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "crack": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "corrosion": {
+      "cells": 10,
+      "share": 0.001508978421608571
+    },
+    "spalling": {
+      "cells": 9,
+      "share": 0.001358080579447714
+    },
+    "efflorescence": {
+      "cells": 6,
+      "share": 0.0009053870529651426
+    },
+    "generic defect": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "water stain": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "shadow": {
+      "cells": 2460,
+      "share": 0.37120869171570847
+    },
+    "moss": {
+      "cells": 4142,
+      "share": 0.6250188622302701
+    },
+    "patch repair": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "graffiti": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "formwork": {
+      "cells": 0,
+      "share": 0.0
+    },
+    "dirt": {
+      "cells": 0,
+      "share": 0.0
+    }
+  },
+  "argmax_anchor_all_normal_cells": {
+    "normal": 0.0,
+    "crack": 5.801488873008046e-05,
+    "corrosion": 0.0007225490687291839,
+    "spalling": 0.007497105848164488,
+    "efflorescence": 0.0044302278666606895,
+    "generic defect": 0.0,
+    "water stain": 0.0,
+    "shadow": 0.029880304736388256,
+    "moss": 0.9574117975913273,
+    "patch repair": 0.0,
+    "graffiti": 0.0,
+    "formwork": 0.0,
+    "dirt": 0.0
+  },
+  "top_images": [
+    {
+      "sample": "normal_00271__tile_x0000_y0512",
+      "R_area": 0.5072747871975671,
+      "R_cells": 736,
+      "abl_area": 0.5073605044647516,
+      "v0_area": 0.0007900895931783963,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_00180__tile_x0000_y0512",
+      "R_area": 0.4245129023121301,
+      "R_cells": 653,
+      "abl_area": 0.8772789612557952,
+      "v0_area": 0.4533362651123269,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_01219__tile_x0512_y0512",
+      "R_area": 0.26835094885287936,
+      "R_cells": 411,
+      "abl_area": 0.2710976282404854,
+      "v0_area": 0.003790193944634099,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_01130__tile_x0512_y0000",
+      "R_area": 0.20047032691820338,
+      "R_cells": 315,
+      "abl_area": 0.2976960689315902,
+      "v0_area": 0.09726673722812719,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00180__tile_x0512_y0512",
+      "R_area": 0.20022062879205738,
+      "R_cells": 344,
+      "abl_area": 0.7154783023508893,
+      "v0_area": 0.5293600274295255,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00116__tile_x0000_y0512",
+      "R_area": 0.1933967889566345,
+      "R_cells": 312,
+      "abl_area": 0.546346953682861,
+      "v0_area": 0.3737347385996035,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_00137__tile_x0000_y0512",
+      "R_area": 0.1603956410906218,
+      "R_cells": 251,
+      "abl_area": 0.3204148715731727,
+      "v0_area": 0.16001923048255096,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00635__tile_x0512_y0000",
+      "R_area": 0.14711319151473592,
+      "R_cells": 236,
+      "abl_area": 0.16504673454480404,
+      "v0_area": 0.04506119467509429,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00297__tile_x0512_y0000",
+      "R_area": 0.1445640345254245,
+      "R_cells": 237,
+      "abl_area": 0.32112297073687035,
+      "v0_area": 0.24803222969246136,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_00116__tile_x0512_y0000",
+      "R_area": 0.1399054873958349,
+      "R_cells": 225,
+      "abl_area": 0.22600661886376172,
+      "v0_area": 0.09706921482983259,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_01162__tile_x0000_y0000",
+      "R_area": 0.1362308254200146,
+      "R_cells": 218,
+      "abl_area": 0.17264948346029427,
+      "v0_area": 0.03641865804027966,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00230__tile_x0000_y0512",
+      "R_area": 0.10795903459996124,
+      "R_cells": 158,
+      "abl_area": 0.10795903459996124,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00297__tile_x0512_y0512",
+      "R_area": 0.10367317124073881,
+      "R_cells": 162,
+      "abl_area": 0.13801225384236968,
+      "v0_area": 0.1339947227978116,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_00165__tile_x0000_y0000",
+      "R_area": 0.09844814478019111,
+      "R_cells": 180,
+      "abl_area": 0.4518753447324876,
+      "v0_area": 0.3891116709649528,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00766__tile_x0512_y0000",
+      "R_area": 0.09585799257613929,
+      "R_cells": 161,
+      "abl_area": 0.09585799257613929,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00181__tile_x0000_y0512",
+      "R_area": 0.09453123835363218,
+      "R_cells": 170,
+      "abl_area": 0.4509883573590137,
+      "v0_area": 0.5365379168467972,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00804__tile_x0512_y0512",
+      "R_area": 0.09417718877178337,
+      "R_cells": 145,
+      "abl_area": 0.10870812897839925,
+      "v0_area": 0.014530940206615882,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "codebrim_image_0000332_x2048_y0000__tile_x0000_y0512",
+      "R_area": 0.09217587692491168,
+      "R_cells": 143,
+      "abl_area": 0.09217587692491168,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00513__tile_x0512_y0000",
+      "R_area": 0.08638809797110955,
+      "R_cells": 147,
+      "abl_area": 0.08638809797110955,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "codebrim_image_0000386_x2048_y1024__tile_x0000_y0512",
+      "R_area": 0.0755914491435727,
+      "R_cells": 114,
+      "abl_area": 0.0755914491435727,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00513__tile_x0512_y0512",
+      "R_area": 0.07388828431299474,
+      "R_cells": 129,
+      "abl_area": 0.07388828431299474,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_01145__tile_x0512_y0512",
+      "R_area": 0.07333671233285133,
+      "R_cells": 144,
+      "abl_area": 0.45491644429868366,
+      "v0_area": 0.3901589123596846,
+      "top_anchor_in_R": "moss"
+    },
+    {
+      "sample": "normal_00953__tile_x0512_y0512",
+      "R_area": 0.06950552317347684,
+      "R_cells": 130,
+      "abl_area": 0.06950552317347684,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "shadow"
+    },
+    {
+      "sample": "normal_00953__tile_x0000_y0000",
+      "R_area": 0.06751911867741983,
+      "R_cells": 108,
+      "abl_area": 0.06751911867741983,
+      "v0_area": 0.0,
+      "top_anchor_in_R": "shadow"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "checkpoint": "runs/ablation-v2-no-nuisance/epoch_20.pth",
+  "sha256": "4e7bc89b1cc34cac7fbfb92acaa7cd2b9e3713f37b897da7761574fffb287ab5",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface"
+  ],
+  "split": "val",
+  "count": 400,
+  "references": "top4 training normal globals",
+  "bank": "runs/nuisance-v0/normal_globals.pt",
+  "image_score": "0.5 image softmax + 0.5 top 1% binary map mean",
+  "map_size": 518,
+  "typed_maps_saved": true
+}

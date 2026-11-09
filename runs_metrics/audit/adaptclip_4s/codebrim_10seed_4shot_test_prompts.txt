@@ -1,0 +1,4 @@
+/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM/train/normal/normal_00913__tile_x0000_y0512.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM/train/normal/normal_00318__tile_x0000_y0000.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM/train/normal/normal_00565__tile_x0000_y0000.jpg
+/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM/train/normal/normal_01211__tile_x0000_y0000.jpg

@@ -1,0 +1,18 @@
+26-10-29 21:13:30.521 - INFO: 
+
+26-10-29 21:13:30.522 - INFO: Namespace(train_data_path='data_views/train', save_path='runs/baseline-v1', dataset='codebrim', pretrained_model='ViT-L/14@336px', n_ctx=12, features_list=[6, 12, 18, 24], epoch=15, learning_rate=0.001, batch_size=8, image_size=518, print_freq=1, save_freq=1, seed=10, k_shots=1, visual_learner=True, textual_learner=True, pq_learner=True, vl_reduction=4, pq_mid_dim=128, pq_context=True)
+26-10-29 21:29:32.008 - INFO: epoch [1/15], global_loss:2.7004, local_loss:6.4641
+26-10-29 21:45:18.450 - INFO: epoch [2/15], global_loss:2.2565, local_loss:5.2506
+26-10-29 22:01:00.318 - INFO: epoch [3/15], global_loss:2.0976, local_loss:4.8168
+26-10-29 22:16:46.263 - INFO: epoch [4/15], global_loss:1.9342, local_loss:4.5803
+26-10-29 22:32:33.898 - INFO: epoch [5/15], global_loss:1.9147, local_loss:4.5176
+26-10-29 22:48:18.550 - INFO: epoch [6/15], global_loss:1.7536, local_loss:4.4064
+26-10-29 23:04:04.818 - INFO: epoch [7/15], global_loss:1.7649, local_loss:4.3870
+26-10-29 23:19:53.220 - INFO: epoch [8/15], global_loss:1.6466, local_loss:4.2486
+26-10-29 23:35:38.678 - INFO: epoch [9/15], global_loss:1.5725, local_loss:4.2086
+26-10-29 23:51:25.066 - INFO: epoch [10/15], global_loss:1.5973, local_loss:4.1911
+26-10-30 00:07:13.172 - INFO: epoch [11/15], global_loss:1.5034, local_loss:4.1449
+26-10-30 00:22:58.274 - INFO: epoch [12/15], global_loss:1.5313, local_loss:4.1285
+26-10-30 00:38:45.284 - INFO: epoch [13/15], global_loss:1.4587, local_loss:4.0931
+26-10-30 00:54:32.914 - INFO: epoch [14/15], global_loss:1.5105, local_loss:4.1448
+26-10-30 01:10:18.625 - INFO: epoch [15/15], global_loss:1.4179, local_loss:4.0268

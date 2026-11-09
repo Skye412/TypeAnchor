@@ -1,0 +1,17 @@
+{
+  "images": 809,
+  "split": "test",
+  "exclude": null,
+  "image_metrics": {
+    "I-AUROC": 0.9270412144427891,
+    "I-AP": 0.8630563790335154,
+    "I-F1max": 0.7816513761467889
+  },
+  "pixel_metrics": {
+    "P-AUROC": 0.9554948644345618,
+    "P-AP": 0.7330683659620507,
+    "P-F1max": 0.6801551808339599
+  },
+  "pixel_ground_truth": "union of all non-black pixels of the flattened mask, bilinear to 518, >127 (eval_filter.union_mask)",
+  "P-AUPRO": "see metrics_multiclass.json"
+}

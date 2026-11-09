@@ -1,0 +1,17 @@
+{
+  "images": 2226,
+  "split": "all",
+  "exclude": null,
+  "image_metrics": {
+    "I-AUROC": 0.7932963890918792,
+    "I-AP": 0.9504961980380386,
+    "I-F1max": 0.9099386503067484
+  },
+  "pixel_metrics": {
+    "P-AUROC": 0.9582782342308795,
+    "P-AP": 0.6587967324739068,
+    "P-F1max": 0.6830432060474744
+  },
+  "pixel_ground_truth": "original flattened union mask resized to 518",
+  "P-AUPRO": "see metrics_multiclass.json"
+}

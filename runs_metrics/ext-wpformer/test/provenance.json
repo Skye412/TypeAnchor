@@ -1,0 +1,9 @@
+{
+  "method": "wpformer (official code, trained on CODEBRIM train with the union mask, val-best checkpoint from the visualad project)",
+  "checkpoint": "/data/Skye/visualad/outputs/comp_wpformer_CODEBRIM/best_model.pth",
+  "sha256": "a9ba51724294e14de1c7de8d1ff6d398725b6fd04681036205b982b92080d427",
+  "data": "/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "test",
+  "count": 809,
+  "image_score": "top 1% mean"
+}

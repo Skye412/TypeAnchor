@@ -1,0 +1,25 @@
+{
+  "checkpoint": "runs/nuisance-v2-s12/epoch_20.pth",
+  "sha256": "c9da1835f7c7e8bdaf1bd55eaf2c719d959686398846c8b53113ec45d37a5d2b",
+  "anchors": [
+    "intact concrete surface",
+    "crack on concrete",
+    "rust stain on concrete",
+    "spalling on concrete",
+    "efflorescence on concrete",
+    "damaged concrete surface",
+    "water stain on concrete",
+    "shadow on concrete",
+    "moss on concrete",
+    "patch repair on concrete",
+    "formwork texture on concrete",
+    "dirt on concrete"
+  ],
+  "split": "val",
+  "count": 400,
+  "references": "top4 training normal globals",
+  "bank": "runs/nuisance-v0/normal_globals.pt",
+  "image_score": "0.5 image softmax + 0.5 top 1% binary map mean",
+  "map_size": 518,
+  "typed_maps_saved": true
+}

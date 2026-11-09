@@ -1,0 +1,15 @@
+{
+  "images": 400,
+  "image_metrics": {
+    "I-AUROC": 0.8801326641425259,
+    "I-AP": 0.8490332820765734,
+    "I-F1max": 0.7804878048780488
+  },
+  "pixel_metrics": {
+    "P-AUROC": 0.9766136931553169,
+    "P-AP": 0.6973140347753338,
+    "P-F1max": 0.6712062254083101
+  },
+  "pixel_ground_truth": "original flattened union mask resized to 518",
+  "P-AUPRO": "not calculated"
+}

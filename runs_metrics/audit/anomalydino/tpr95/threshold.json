@@ -1,0 +1,7 @@
+{
+  "model": "anomalydino",
+  "tpr_target": 0.95,
+  "threshold": 0.21361768543720247,
+  "pixel_fpr_on_anomaly_images": 0.8985260990878632,
+  "n_images": 123
+}

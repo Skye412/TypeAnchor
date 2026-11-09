@@ -1,0 +1,6 @@
+26-11-06 18:16:17.938 - INFO: 
+loading model from: runs/baseline-v1/epoch_15.pth
+26-11-06 18:17:49.929 - INFO: 
+|        Name        |  I-AUROC  |  I-AP  |  I-F1max  |  P-AUROC  |  P-AP  |  P-F1max  |  P-AUPRO  |
+|:------------------:|:---------:|:------:|:---------:|:---------:|:------:|:---------:|:---------:|
+| structural defects |   67.3    |  88.2  |   88.3    |   84.0    |  40.6  |   43.5    |   54.7    |

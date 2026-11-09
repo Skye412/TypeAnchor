@@ -1,0 +1,9 @@
+{
+  "method": "AnomalyCLIP (official code, prompt learner trained on CODEBRIM train, 15 epochs, val-best, seed 111)",
+  "checkpoint": "/home/skye/data/Skye/visualad/outputs/comp_anomalyclip_CODEBRIM/best_model.pth",
+  "sha256": "6db8fe9315a90642c9b53c9431db03db5df917d2120012737cd0d5d5a7123d88",
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_S2DS",
+  "split": "test",
+  "count": 447,
+  "sigma": 4.0
+}

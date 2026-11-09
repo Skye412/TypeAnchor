@@ -1,0 +1,46 @@
+{
+  "runs/nuisance-v0/s2ds-all": {
+    "n_normal": 73,
+    "n_anomaly": 374,
+    "exclude": "s2ds_exclude_trainval.txt",
+    "tpr0.5": {
+      "threshold": 0.6831350326538086,
+      "normal_img_flagged_area": 0.0053505647333330205,
+      "anomaly_img_bg_fpr": 0.027200561157811914
+    },
+    "tpr0.8": {
+      "threshold": 0.20851078629493713,
+      "normal_img_flagged_area": 0.026107978638787332,
+      "anomaly_img_bg_fpr": 0.07038044086670893
+    },
+    "tpr0.9": {
+      "threshold": 0.07574080377817154,
+      "normal_img_flagged_area": 0.0446691619802108,
+      "anomaly_img_bg_fpr": 0.10909949914747152
+    },
+    "normal_img_flagged_area@0.5": 0.01069357368611613,
+    "normal_img_max_mean": 0.20596066117286682
+  },
+  "runs/ablation-v2-no-nuisance/s2ds-all": {
+    "n_normal": 73,
+    "n_anomaly": 374,
+    "exclude": "s2ds_exclude_trainval.txt",
+    "tpr0.5": {
+      "threshold": 0.382968544960022,
+      "normal_img_flagged_area": 0.010472669210173839,
+      "anomaly_img_bg_fpr": 0.03750812350654426
+    },
+    "tpr0.8": {
+      "threshold": 0.014062099903821934,
+      "normal_img_flagged_area": 0.028257138732095097,
+      "anomaly_img_bg_fpr": 0.08679857764046059
+    },
+    "tpr0.9": {
+      "threshold": 0.0005571228684857488,
+      "normal_img_flagged_area": 0.0448654591167946,
+      "anomaly_img_bg_fpr": 0.1325728914349894
+    },
+    "normal_img_flagged_area@0.5": 0.00840805217491101,
+    "normal_img_max_mean": 0.13405834138393402
+  }
+}

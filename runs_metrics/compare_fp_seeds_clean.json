@@ -1,0 +1,90 @@
+{
+  "runs/ablation-v2-no-nuisance/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.601378470659256,
+      "normal_img_flagged_area": 0.0004136935430673365,
+      "anomaly_img_bg_fpr": 0.023703923488616118
+    },
+    "tpr0.8": {
+      "threshold": 0.09047588258981705,
+      "normal_img_flagged_area": 0.0011829361378408194,
+      "anomaly_img_bg_fpr": 0.05869929269098033
+    },
+    "tpr0.9": {
+      "threshold": 0.016477737016975875,
+      "normal_img_flagged_area": 0.002793963640971363,
+      "anomaly_img_bg_fpr": 0.0880203991804492
+    },
+    "normal_img_flagged_area@0.5": 0.0004679947330466153,
+    "normal_img_max_mean": 0.01882200688123703
+  },
+  "runs/abl-v2-no-nu-gate/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.8450019359588623,
+      "normal_img_flagged_area": 0.00047234756302082557,
+      "anomaly_img_bg_fpr": 0.02665495209199392
+    },
+    "tpr0.8": {
+      "threshold": 0.161296290159225,
+      "normal_img_flagged_area": 0.002499179513386801,
+      "anomaly_img_bg_fpr": 0.0723210438665827
+    },
+    "tpr0.9": {
+      "threshold": 0.02195494417101144,
+      "normal_img_flagged_area": 0.005348099452527542,
+      "anomaly_img_bg_fpr": 0.10851119181839483
+    },
+    "normal_img_flagged_area@0.5": 0.0012043800125967113,
+    "normal_img_max_mean": 0.04994995892047882
+  },
+  "runs/abl-v2-gamma0/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.5717516243457794,
+      "normal_img_flagged_area": 0.0004393446681996392,
+      "anomaly_img_bg_fpr": 0.027980332518536676
+    },
+    "tpr0.8": {
+      "threshold": 0.02913401238620277,
+      "normal_img_flagged_area": 0.0016349462310490304,
+      "anomaly_img_bg_fpr": 0.08230894476541586
+    },
+    "tpr0.9": {
+      "threshold": 0.002725312858819959,
+      "normal_img_flagged_area": 0.003446553304027966,
+      "anomaly_img_bg_fpr": 0.11996691024672218
+    },
+    "normal_img_flagged_area@0.5": 0.0004791024563587305,
+    "normal_img_max_mean": 0.016624363139271736
+  },
+  "runs/abl-v2-gamma1/val-epoch20": {
+    "n_normal": 256,
+    "n_anomaly": 123,
+    "exclude": "eval_exclude_normals.txt",
+    "tpr0.5": {
+      "threshold": 0.49299655854701996,
+      "normal_img_flagged_area": 0.0004147562741312741,
+      "anomaly_img_bg_fpr": 0.02670637626826326
+    },
+    "tpr0.8": {
+      "threshold": 0.03467988222837445,
+      "normal_img_flagged_area": 0.0026798437942561976,
+      "anomaly_img_bg_fpr": 0.06894453919443597
+    },
+    "tpr0.9": {
+      "threshold": 0.002628761762753124,
+      "normal_img_flagged_area": 0.006148394175511695,
+      "anomaly_img_bg_fpr": 0.09940667811656725
+    },
+    "normal_img_flagged_area@0.5": 0.00040600694030351364,
+    "normal_img_max_mean": 0.046056270599365234
+  }
+}

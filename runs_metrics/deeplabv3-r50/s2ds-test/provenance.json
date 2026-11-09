@@ -1,0 +1,10 @@
+{
+  "model": "SegFormer-B2 (mmseg 0.30 modules), multi-label sigmoid",
+  "checkpoint": "runs/deeplabv3-r50/last.pth",
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_S2DS",
+  "split": "test",
+  "count": 447,
+  "image_score": "top 1% binary map mean",
+  "map_size": 518,
+  "binary": "max over 4 class sigmoids"
+}

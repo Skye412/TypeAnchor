@@ -1,0 +1,9 @@
+{
+  "method": "mixercseg (official code, trained on CODEBRIM train with the union mask, val-best checkpoint from the visualad project)",
+  "checkpoint": "/data/Skye/visualad/outputs/comp_mixercseg_CODEBRIM/best_model.pth",
+  "sha256": "744de20eb2788ae84149631f637b060be01fe3dcd8145674516555284dbaca5d",
+  "data": "/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "test",
+  "count": 809,
+  "image_score": "top 1% mean"
+}

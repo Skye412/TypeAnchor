@@ -1,0 +1,68 @@
+{
+  "runs/ablation-v2-no-nuisance/dacl10k-test": {
+    "n_normal": 55,
+    "n_anomaly": 207,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.024309204891324043,
+      "normal_img_flagged_area": 0.053798325226896655,
+      "anomaly_img_bg_fpr": 0.11224786212059394
+    },
+    "tpr0.8": {
+      "threshold": 5.583727897828786e-07,
+      "normal_img_flagged_area": 0.2603380445079287,
+      "anomaly_img_bg_fpr": 0.38373231435051103
+    },
+    "tpr0.9": {
+      "threshold": 6.074326819316403e-09,
+      "normal_img_flagged_area": 0.43586268161557734,
+      "anomaly_img_bg_fpr": 0.5561201158030362
+    },
+    "normal_img_flagged_area@0.5": 0.011441391750272058,
+    "normal_img_max_mean": 0.32203441858291626
+  },
+  "runs/nuisance-v0/dacl10k-test": {
+    "n_normal": 55,
+    "n_anomaly": 207,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 0.14282462000846863,
+      "normal_img_flagged_area": 0.08474923803109131,
+      "anomaly_img_bg_fpr": 0.12494247521408337
+    },
+    "tpr0.8": {
+      "threshold": 0.002967911539599298,
+      "normal_img_flagged_area": 0.43166375521587874,
+      "anomaly_img_bg_fpr": 0.4650512358723714
+    },
+    "tpr0.9": {
+      "threshold": 0.0008608108619228005,
+      "normal_img_flagged_area": 0.5789428926494563,
+      "anomaly_img_bg_fpr": 0.622013404387902
+    },
+    "normal_img_flagged_area@0.5": 0.027801531662535524,
+    "normal_img_max_mean": 0.46324217319488525
+  },
+  "runs/segformer-b2/dacl10k-test": {
+    "n_normal": 55,
+    "n_anomaly": 207,
+    "exclude": null,
+    "tpr0.5": {
+      "threshold": 3.1467994876521743e-10,
+      "normal_img_flagged_area": 0.12143202722353301,
+      "anomaly_img_bg_fpr": 0.19238673435441747
+    },
+    "tpr0.8": {
+      "threshold": 6.753767683997921e-12,
+      "normal_img_flagged_area": 0.3644622986321828,
+      "anomaly_img_bg_fpr": 0.4672374956753081
+    },
+    "tpr0.9": {
+      "threshold": 1.5087293393778436e-12,
+      "normal_img_flagged_area": 0.5739096966896194,
+      "anomaly_img_bg_fpr": 0.6416290898065972
+    },
+    "normal_img_flagged_area@0.5": 0.02826101687105548,
+    "normal_img_max_mean": 0.10907630622386932
+  }
+}

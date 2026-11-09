@@ -1,0 +1,10 @@
+{
+  "method": "Bayes-PFL (official code, trained on CODEBRIM train, two-stage up to 30 epochs, val-best, seed 333)",
+  "checkpoint": "/data/Skye/visualad/outputs/comp_bayespfl_CODEBRIM/best_model.pth",
+  "sha256": "048d128fc5f6cffd6027744fe59f6b09d4ec8c755b2899d183f44165cc36c604",
+  "stage": 2,
+  "data": "/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "val",
+  "count": 400,
+  "sigma": 8.0
+}

@@ -1,0 +1,64 @@
+{
+  "mode": "train",
+  "out": "runs/ext-multiads",
+  "data": "/home/skye/data/Skye/databases/Bridge512_balance_CODEBRIM",
+  "split": "val",
+  "checkpoint": null,
+  "epochs": 10,
+  "batch_size": 4,
+  "lr": 0.001,
+  "seed": 42,
+  "object": "concrete bridge surface",
+  "states": [
+    [
+      "{}",
+      "flawless {}",
+      "perfect {}",
+      "unblemished {}",
+      "{} without flaw",
+      "{} without defect",
+      "{} without damage",
+      "{} in pristine condition",
+      "{} with no imperfections",
+      "{} of ideal quality"
+    ],
+    [
+      "{} with a crack defect",
+      "a crack on {}",
+      "visible crack in {}",
+      "{} with thin crack lines",
+      "crack detected in {}",
+      "{} has cracks"
+    ],
+    [
+      "{} with a corrosion defect",
+      "{} has rust stains",
+      "rust spots on {}",
+      "visible rust on {}",
+      "{} shows exposed corroded rebar",
+      "{} affected by corrosion"
+    ],
+    [
+      "{} with a spalling defect",
+      "spalling on {}",
+      "{} with broken off concrete",
+      "{} has spalled areas",
+      "concrete loss detected on {}",
+      "{} shows spalling damage"
+    ],
+    [
+      "{} with an efflorescence defect",
+      "efflorescence on {}",
+      "{} with white salt deposits",
+      "{} has efflorescence stains",
+      "white mineral deposits on {}",
+      "{} shows efflorescence"
+    ]
+  ],
+  "layers": [
+    6,
+    12,
+    18,
+    24
+  ]
+}

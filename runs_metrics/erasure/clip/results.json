@@ -1,0 +1,42 @@
+{
+  "1.0": {
+    "threshold_tpr50": 0.5711095333099365,
+    "normal_img_flagged_area": 0.18271842157797694,
+    "anomaly_img_bg_fpr": 0.22710408798266865,
+    "P-AUROC_subsampled": 0.7301096986559998,
+    "P-AP_subsampled": 0.6663436176771839,
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "relative_drop_vs_alpha1": 0.0
+  },
+  "0.8": {
+    "threshold_tpr50": 0.5479069352149963,
+    "normal_img_flagged_area": 0.18599210663392657,
+    "anomaly_img_bg_fpr": 0.23352481976882922,
+    "P-AUROC_subsampled": 0.7266297195525,
+    "P-AP_subsampled": 0.6619078505955889,
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "relative_drop_vs_alpha1": -0.017916557223282226
+  },
+  "0.0": {
+    "threshold_tpr50": 0.503163605928421,
+    "normal_img_flagged_area": 0.19759828863591494,
+    "anomaly_img_bg_fpr": 0.251849487821784,
+    "P-AUROC_subsampled": 0.7138826363075,
+    "P-AP_subsampled": 0.6472937089423513,
+    "n_normal": 277,
+    "n_anomaly": 123,
+    "relative_drop_vs_alpha1": -0.08143605296846257
+  },
+  "verdict_alpha0.8": "下降<25%：统计擦除不足，主路线成立",
+  "verdict_alpha0.0": "下降<25%：统计擦除不足，主路线成立",
+  "protocol": {
+    "tpr": 0.5,
+    "k_neighbors": 12,
+    "n_components": 4,
+    "features": "L2-normalized",
+    "references": 16,
+    "limit": 0
+  }
+}
